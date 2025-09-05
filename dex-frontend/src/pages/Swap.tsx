@@ -11,7 +11,7 @@ const Swap = () => {
       <FloatingOrbs />
       <Navbar />
       <main className="relative z-10 container mx-auto px-4 pt-20 pb-12">
-        {/* Hero-like header */}
+      
         
 
         {/* Swap Card center with glow */}
@@ -22,7 +22,7 @@ const Swap = () => {
           </div>
         </section>
 
-        {/* Feature chips under card */}
+      
        
       </main>
     </div>

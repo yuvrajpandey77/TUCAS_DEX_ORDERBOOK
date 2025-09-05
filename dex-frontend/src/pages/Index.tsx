@@ -80,7 +80,11 @@ const Index = () => {
               <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-primary/60 to-white/20" />
+                    <img 
+                      src="/ethlogo.webp" 
+                      alt="ETH" 
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
                     <span className="font-medium">ETH</span>
                   </div>
                   <input className="token-input w-40 text-right" readOnly value="0.25" />
@@ -96,7 +100,11 @@ const Index = () => {
               <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-white/20 to-primary/60" />
+                    <img 
+                      src="/maticlogo.webp" 
+                      alt="MATIC" 
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
                     <span className="font-medium">MATIC</span>
                   </div>
                   <input className="token-input w-40 text-right" readOnly value="≈ 120.34" />
