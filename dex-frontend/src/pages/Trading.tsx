@@ -53,7 +53,6 @@ function TradingInterface() {
 
   // Debug connection state
   useEffect(() => {
-    console.log('Connection state changed:', { isConnected, account, error, walletError })
   }, [isConnected, account, error, walletError])
 
 

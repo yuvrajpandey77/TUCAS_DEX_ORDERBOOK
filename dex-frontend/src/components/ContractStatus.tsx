@@ -32,7 +32,6 @@ const ContractStatus = () => {
             const deployed = await dexService.isContractDeployed();
             setIsContractDeployed(deployed);
           } catch (error) {
-            console.error('Contract deployment check failed:', error);
             setIsContractDeployed(false);
           } finally {
             setIsChecking(false);
@@ -41,7 +40,6 @@ const ContractStatus = () => {
           setIsContractDeployed(false);
         }
       } catch (error) {
-        console.error('Wallet status check failed:', error);
         setIsConnected(false);
         setIsContractDeployed(false);
       }
@@ -63,7 +61,6 @@ const ContractStatus = () => {
       const result = await checkContractDeployment();
       setIsContractDeployed(result);
     } catch (error) {
-      console.error('Manual contract check failed:', error);
       setIsContractDeployed(false);
     } finally {
       setIsChecking(false);
@@ -135,7 +132,6 @@ const ContractStatus = () => {
               size="sm"
               onClick={() => {
                 // This would typically trigger wallet connection
-                console.log('Connect wallet to check contract status');
               }}
               className="text-xs h-5 px-2"
             >
@@ -161,10 +157,6 @@ const ContractStatus = () => {
               variant="outline"
               size="sm"
               onClick={() => {
-                console.log('Contract deployment instructions:');
-                console.log('1. Deploy OrderBookDEX contract to Polygon Amoy');
-                console.log('2. Update contract address in config/network.ts');
-                console.log('3. Refresh the page');
               }}
               className="text-xs h-5 px-2"
             >

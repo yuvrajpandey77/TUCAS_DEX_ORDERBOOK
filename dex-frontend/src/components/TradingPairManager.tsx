@@ -85,7 +85,6 @@ const TradingPairManager = () => {
       await checkTradingPairs();
 
     } catch (error) {
-      console.error('Error adding trading pair:', error);
       toast({
         title: "Failed to Add Trading Pair",
         description: error instanceof Error ? error.message : 'Failed to add trading pair',
@@ -138,11 +137,9 @@ const TradingPairManager = () => {
             isActive
           });
         } catch (error) {
-          console.error(`Error checking pair ${pair.baseTokenSymbol}/${pair.quoteTokenSymbol}:`, error);
           
           // If using placeholder addresses, assume active for demo
           if (isPlaceholderAddress(pair.baseToken) || isPlaceholderAddress(pair.quoteToken)) {
-            console.log(`Using placeholder addresses for ${pair.baseTokenSymbol}/${pair.quoteTokenSymbol}, assuming active for demo`)
             activePairs.push({
               ...pair,
               isActive: true
@@ -159,7 +156,6 @@ const TradingPairManager = () => {
       setPairs(activePairs);
 
     } catch (error) {
-      console.error('Error checking trading pairs:', error);
       toast({
         title: "Error",
         description: "Failed to check trading pairs",

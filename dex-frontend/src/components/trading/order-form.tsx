@@ -53,7 +53,6 @@ export function OrderForm({ orderType, side }: OrderFormProps) {
       
       // Check if this is a native token
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-        console.log('Native token detected, skipping approval check')
         setApprovalStatus('approved')
         return
       }
@@ -69,7 +68,6 @@ export function OrderForm({ orderType, side }: OrderFormProps) {
         setApprovalStatus('needed')
       }
     } catch (error) {
-      console.error('Failed to check approval:', error)
       setApprovalStatus('needed')
     }
   }
@@ -85,7 +83,6 @@ export function OrderForm({ orderType, side }: OrderFormProps) {
       
       // Check if this is a native token
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-        console.log('Native token detected, skipping approval')
         setApprovalStatus('approved')
         toast({
           title: "Native Token",
@@ -107,7 +104,6 @@ export function OrderForm({ orderType, side }: OrderFormProps) {
 
       setApprovalStatus('approved')
     } catch (error) {
-      console.error('Token approval failed:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to approve tokens'
       toast({
         title: "Approval Failed",
@@ -165,15 +161,6 @@ export function OrderForm({ orderType, side }: OrderFormProps) {
         )
       }
 
-      console.log('Order placed successfully:', {
-        type: orderType,
-        side,
-        amount: data.amount,
-        price: data.price,
-        pair: selectedPair,
-        txHash,
-      })
-
       toast({
         title: "Order Placed Successfully! 🎉",
         description: `${orderType.charAt(0).toUpperCase() + orderType.slice(1)} ${side} order placed. Transaction: ${txHash.slice(0, 10)}...`,
@@ -181,7 +168,6 @@ export function OrderForm({ orderType, side }: OrderFormProps) {
 
       reset()
     } catch (error) {
-      console.error('Order placement failed:', error)
       let errorMessage = 'Failed to place order'
       
       if (error instanceof Error) {

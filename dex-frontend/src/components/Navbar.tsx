@@ -58,6 +58,10 @@ const Navbar = () => {
   
   const location = useLocation();
   const tokenDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Avoid brief button swap flashes during route changes or wallet rehydration
+  const shouldShowDisconnectButton = isConnected;
+  const shouldShowConnectButton = !isConnected && !isLoading && !isAutoReconnecting;
 
   // Check network status (Polygon Amoy)
   React.useEffect(() => {
@@ -107,7 +111,6 @@ const Navbar = () => {
           error: null
         }));
         
-        console.log('Navbar: Fetching all user balances for:', account);
         
         // Use the new wallet service for fetching balances
         if (account) {
@@ -156,7 +159,6 @@ const Navbar = () => {
               retryCount: 0
             }));
             
-            console.log('All balances fetched:', balances);
           } catch (error) {
             console.error('Error fetching balances with new service:', error);
             // Fallback to old method if new service fails
@@ -296,7 +298,6 @@ const Navbar = () => {
           retryCount: 0
         }));
         
-        console.log('All balances refreshed:', balances);
       }
     } catch (error) {
       console.error('Failed to refresh balances:', error);
@@ -373,7 +374,7 @@ const Navbar = () => {
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center space-x-2">
               <img 
-                src="/tucas.png" 
+                src="/tucas.webp" 
                 alt="Tucas DEX Logo" 
                 className="w-16 h-16 rounded-lg"
               />
@@ -561,7 +562,7 @@ const Navbar = () => {
               </div>
             )}
             
-            {isConnected ? (
+            {shouldShowDisconnectButton ? (
               <div className="flex items-center space-x-2">
                 <Button 
                   variant="outline" 
@@ -572,7 +573,7 @@ const Navbar = () => {
                   Disconnect
                 </Button>
               </div>
-            ) : (
+            ) : shouldShowConnectButton ? (
               <div className="flex items-center space-x-2">
                 <Button 
                   variant="default" 
@@ -596,7 +597,7 @@ const Navbar = () => {
                   )}
                 </Button>
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Mobile menu button */}

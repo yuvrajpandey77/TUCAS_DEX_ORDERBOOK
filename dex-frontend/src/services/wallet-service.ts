@@ -148,7 +148,6 @@ export class WalletService {
         return;
       }
 
-      console.log('Attempting auto-reconnect...');
       this.updateState({ isLoading: true, error: null });
 
       // Get MetaMask provider
@@ -201,10 +200,8 @@ export class WalletService {
       // Set up event listeners
       this.setupEventListeners();
 
-      console.log('Auto-reconnect successful');
 
     } catch (error) {
-      console.log('Auto-reconnect failed:', error);
       this.clearStoredConnection();
       this.updateState({ isLoading: false });
     }
@@ -290,7 +287,6 @@ export class WalletService {
       try {
         await this.switchToPolygonNetwork();
       } catch (switchError) {
-        console.warn('Failed to switch to Polygon Amoy:', switchError);
         // Don't fail the connection if network switch fails
       }
 

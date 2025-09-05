@@ -22,37 +22,27 @@ export class TokenService {
    */
   async initializeProvider(): Promise<boolean> {
     try {
-      console.log('Initializing provider...');
       
       // Check if MetaMask is installed
       if (typeof window.ethereum === 'undefined') {
-        console.error('MetaMask not detected');
         throw new Error('MetaMask is not installed. Please install MetaMask to use this application.');
       }
 
-      console.log('MetaMask detected, checking connection status...');
-      console.log('MetaMask object:', window.ethereum);
 
-      console.log('MetaMask detected, requesting accounts...');
 
       // Request account access - this should trigger the MetaMask popup
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
-      console.log('Accounts received:', accounts);
 
       if (!accounts || accounts.length === 0) {
-        console.error('No accounts returned from MetaMask');
         throw new Error('No accounts found. Please connect your wallet.');
       }
 
-      console.log('Creating provider and signer...');
       // Create provider and signer
       this.provider = new BrowserProvider(window.ethereum);
       this.signer = await this.provider.getSigner();
 
-      console.log('Provider initialized successfully');
       return true;
     } catch (error) {
-      console.error('Failed to initialize provider:', error);
       
       // Provide more specific error messages
       if (error instanceof Error) {
@@ -123,7 +113,6 @@ export class TokenService {
         symbol
       };
     } catch (error) {
-      console.error('Error fetching native token balance:', error);
       throw new Error(`Failed to fetch balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -164,7 +153,6 @@ export class TokenService {
         address: tokenAddress
       };
     } catch (error) {
-      console.error('Error fetching token balance:', error);
       throw new Error(`Failed to fetch token balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -187,7 +175,6 @@ export class TokenService {
         try {
           return await this.getTokenBalance(address, targetAddress);
         } catch (error) {
-          console.error(`Error fetching balance for token ${address}:`, error);
           return null;
         }
       });
@@ -195,7 +182,6 @@ export class TokenService {
       const balances = await Promise.all(balancePromises);
       return balances.filter((balance): balance is TokenBalance => balance !== null);
     } catch (error) {
-      console.error('Error fetching multiple token balances:', error);
       throw new Error(`Failed to fetch token balances: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -225,7 +211,6 @@ export class TokenService {
         tokens: tokenBalances
       };
     } catch (error) {
-      console.error('Error fetching all balances:', error);
       throw new Error(`Failed to fetch balances: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -259,7 +244,6 @@ export class TokenService {
    */
   async connectWallet(): Promise<string> {
     try {
-      console.log('Connecting wallet...');
       
       const initialized = await this.initializeProvider();
       if (!initialized) {
@@ -271,7 +255,6 @@ export class TokenService {
       }
 
       const address = await this.signer.getAddress();
-      console.log('Wallet connected successfully, address:', address);
       
       // Verify the connection by checking if we can get the address
       if (!address) {
@@ -280,7 +263,6 @@ export class TokenService {
       
       return address;
     } catch (error) {
-      console.error('Error connecting wallet:', error);
       
       // Provide more specific error messages for common issues
       if (error instanceof Error) {
@@ -311,7 +293,6 @@ export class TokenService {
       }
       return await this.signer!.getAddress();
     } catch (error) {
-      console.error('Error getting current address:', error);
       return null;
     }
   }
@@ -344,28 +325,21 @@ export const createTokenService = (tokenAddress: string) => {
   return {
     async initialize(_signer: any) {
       // Don't re-initialize if already initialized
-      console.log('createTokenService: initialize called for token:', tokenAddress)
       // The token service is already initialized by the wallet service
     },
     async getBalance(accountAddress: string): Promise<string> {
-      console.log('createTokenService: getBalance called for:', { tokenAddress, accountAddress })
       
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
         // Native token
-        console.log('createTokenService: fetching native token balance')
         const balance = await tokenService.getBalance(accountAddress);
-        console.log('createTokenService: native balance result:', balance)
         return balance.balance;
       } else {
         // ERC-20 token
-        console.log('createTokenService: fetching ERC-20 token balance')
         const balance = await tokenService.getTokenBalance(tokenAddress, accountAddress);
-        console.log('createTokenService: ERC-20 balance result:', balance)
         return balance.balance;
       }
     },
     async getAllowance(ownerAddress: string, spenderAddress: string): Promise<string> {
-      console.log('createTokenService: getAllowance called for:', { tokenAddress, ownerAddress, spenderAddress })
       
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
         // Native tokens don't need allowance
@@ -383,16 +357,13 @@ export const createTokenService = (tokenAddress: string) => {
           
           const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, tokenService.getProvider());
           const allowance = await tokenContract.allowance(ownerAddress, spenderAddress);
-          console.log('createTokenService: allowance result:', allowance.toString())
           return allowance.toString();
         } catch (error) {
-          console.error('Error getting allowance:', error)
           return '0';
         }
       }
     },
     async approve(spenderAddress: string, amount: string): Promise<string> {
-      console.log('createTokenService: approve called for:', { tokenAddress, spenderAddress, amount })
       
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
         // Native tokens don't need approval
@@ -412,16 +383,13 @@ export const createTokenService = (tokenAddress: string) => {
           const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, signer);
           const tx = await tokenContract.approve(spenderAddress, amount);
           const receipt = await tx.wait();
-          console.log('createTokenService: approval transaction:', receipt.transactionHash)
           return receipt.transactionHash;
         } catch (error) {
-          console.error('Error approving tokens:', error)
           throw error;
         }
       }
     },
     async getSymbol(): Promise<string> {
-      console.log('createTokenService: getSymbol called for token:', tokenAddress)
       
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
         return 'ETH'; // Native token symbol
@@ -430,13 +398,11 @@ export const createTokenService = (tokenAddress: string) => {
           const balance = await tokenService.getTokenBalance(tokenAddress);
           return balance.symbol;
         } catch (error) {
-          console.error('Error getting token symbol:', error)
           return 'UNKNOWN';
         }
       }
     },
     async getDecimals(): Promise<number> {
-      console.log('createTokenService: getDecimals called for token:', tokenAddress)
       
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
         return 18; // Native tokens have 18 decimals
@@ -445,7 +411,6 @@ export const createTokenService = (tokenAddress: string) => {
           const balance = await tokenService.getTokenBalance(tokenAddress);
           return balance.decimals;
         } catch (error) {
-          console.error('Error getting token decimals:', error)
           return 18; // Default to 18 decimals
         }
       }

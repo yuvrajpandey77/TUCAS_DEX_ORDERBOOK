@@ -69,7 +69,6 @@ export class MarketDataService {
         timestamp: Date.now()
       };
     } catch (error) {
-      console.error('Error getting price from order book:', error);
       throw error;
     }
   }
@@ -119,7 +118,6 @@ export class MarketDataService {
         priceVolatility: `${volatility}%`
       };
     } catch (error) {
-      console.error('Error getting market stats:', error);
       throw error;
     }
   }
@@ -149,7 +147,6 @@ export class MarketDataService {
       
       return data;
     } catch (error) {
-      console.error('Error getting historical prices:', error);
       throw error;
     }
   }
@@ -183,7 +180,6 @@ export class MarketDataService {
       
       return alerts;
     } catch (error) {
-      console.error('Error getting price alerts:', error);
       throw error;
     }
   }
@@ -220,10 +216,8 @@ export class MarketDataService {
       } catch (error) {
         // If using placeholder addresses, assume active for demo
         if (isPlaceholderAddress(baseToken) || isPlaceholderAddress(quoteToken)) {
-          console.log('Using placeholder addresses, assuming trading pair is active for demo')
           isActive = true;
         } else {
-          console.error('Error checking trading pair status:', error);
           isActive = false;
         }
       }
@@ -236,7 +230,6 @@ export class MarketDataService {
         pricePrecision: '0.0001'
       };
     } catch (error) {
-      console.error('Error getting trading pair info:', error);
       throw error;
     }
   }

@@ -126,7 +126,6 @@ export class SecurityAuditService {
       };
 
     } catch (error) {
-      console.error('Error performing security audit:', error);
       
       // Return basic audit with error
       return {
@@ -184,7 +183,6 @@ export class SecurityAuditService {
           issues.push(this.CRITICAL_ISSUES.find(issue => issue.id === 'access-control')!);
         }
       } catch (error) {
-        console.warn('Could not check access control:', error);
       }
 
       // Check for reentrancy protection
@@ -194,7 +192,6 @@ export class SecurityAuditService {
           issues.push(this.CRITICAL_ISSUES.find(issue => issue.id === 'reentrancy-attack')!);
         }
       } catch (error) {
-        console.warn('Could not check reentrancy protection:', error);
       }
 
       // Check for overflow protection
@@ -204,11 +201,9 @@ export class SecurityAuditService {
           issues.push(this.CRITICAL_ISSUES.find(issue => issue.id === 'integer-overflow')!);
         }
       } catch (error) {
-        console.warn('Could not check overflow protection:', error);
       }
 
     } catch (error) {
-      console.error('Error auditing smart contract:', error);
       issues.push({
         id: 'contract-audit-failed',
         severity: 'high',
@@ -300,7 +295,6 @@ export class SecurityAuditService {
       // For demo purposes, return true
       return true;
     } catch (error) {
-      console.error('Error checking access control:', error);
       return false;
     }
   }
@@ -312,7 +306,6 @@ export class SecurityAuditService {
       // For demo purposes, return true
       return true;
     } catch (error) {
-      console.error('Error checking reentrancy protection:', error);
       return false;
     }
   }
@@ -324,7 +317,6 @@ export class SecurityAuditService {
       // For demo purposes, return true
       return true;
     } catch (error) {
-      console.error('Error checking overflow protection:', error);
       return false;
     }
   }

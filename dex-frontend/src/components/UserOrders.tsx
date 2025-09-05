@@ -38,7 +38,6 @@ const UserOrders = () => {
       setIsContractAvailable(isDeployed);
       return isDeployed;
     } catch (error) {
-      console.error('Contract availability check failed:', error);
       setIsContractAvailable(false);
       return false;
     }
@@ -81,13 +80,11 @@ const UserOrders = () => {
           };
           orders.push(order);
         } catch (error) {
-          console.error(`Error fetching order ${orderId}:`, error);
         }
       }
 
       setUserOrders(orders);
     } catch (error) {
-      console.error('Error fetching user orders:', error);
       toast({
         title: "Error",
         description: "Failed to fetch your orders",
@@ -123,7 +120,6 @@ const UserOrders = () => {
       // Refresh orders
       await fetchUserOrders();
     } catch (error) {
-      console.error('Error cancelling order:', error);
       toast({
         title: "Cancellation Failed",
         description: error instanceof Error ? error.message : 'Failed to cancel order',

@@ -69,7 +69,6 @@ export const useMarketData = () => {
           });
 
         } catch (contractError) {
-          console.error('Contract fetch failed, using mock data:', contractError);
           
           const errorMessage = contractError instanceof Error ? contractError.message.toLowerCase() : '';
           let error = 'Using demo data - contract not available';
@@ -96,7 +95,6 @@ export const useMarketData = () => {
       }
 
     } catch (error) {
-      console.error('Error fetching market data:', error);
       setMarketData({
         ...getMockMarketData(),
         error: error instanceof Error ? error.message : 'Failed to fetch market data',

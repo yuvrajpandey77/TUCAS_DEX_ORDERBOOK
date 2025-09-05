@@ -45,12 +45,10 @@ export class AggregatorService {
     // Add slippage protection for testnet
     url.searchParams.set('slippagePercentage', '0.5')
 
-    console.log('Fetching quote from:', url.toString())
 
     const res = await fetch(url.toString())
     if (!res.ok) {
       const text = await res.text()
-      console.error('Quote request failed:', { status: res.status, text })
       
       // Handle specific error cases
       if (res.status === 400) {
@@ -58,7 +56,6 @@ export class AggregatorService {
       } else if (res.status === 404) {
         // For testnet, provide a mock quote if no liquidity is available
         if (this.isTestnet) {
-          console.warn('No liquidity on 0x for testnet, providing mock quote')
           return this.getMockQuote(params)
         }
         throw new Error('No liquidity available for this token pair on Sepolia testnet.')
@@ -76,31 +73,25 @@ export class AggregatorService {
     
     // Return cached price if still valid
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-      console.log(`Using cached price for ${cacheKey}:`, cached.price)
       return cached.price
     }
 
-    console.log(`Fetching real-time price for ${sellToken} -> ${buyToken}`)
 
     // For MATIC to USDC, try CoinGecko first (more reliable for mainnet prices)
     if (sellToken === '0x0000000000000000000000000000000000000000' && 
         buyToken === '0x0FA8781a83E46826621b3BC094Ea2A0212e71B23') {
       try {
-        console.log('Trying CoinGecko API for MATIC/USD price...')
         const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=matic-network&vs_currencies=usd')
         const data = await response.json()
         const price = data['matic-network'].usd
-        console.log('CoinGecko price received:', price)
         this.priceCache.set(cacheKey, { price, timestamp: Date.now() })
         return price
       } catch (coingeckoError) {
-        console.warn('CoinGecko API failed:', coingeckoError)
       }
     }
 
     // Try 0x API as secondary option
     try {
-      console.log('Trying 0x API...')
       const quote = await this.getQuote({
         sellToken,
         buyToken,
@@ -108,16 +99,13 @@ export class AggregatorService {
       })
       
       const price = parseFloat(ethers.formatEther(quote.buyAmount))
-      console.log('0x API price received:', price)
       this.priceCache.set(cacheKey, { price, timestamp: Date.now() })
       return price
     } catch (error) {
-      console.warn('0x API failed:', error)
     }
     
           // Final fallback to static rate
       const fallbackPrice = 0.8 // 1 MATIC = 0.8 USDC (approximate)
-      console.warn(`Using fallback price: ${fallbackPrice} for ${cacheKey}`)
       this.priceCache.set(cacheKey, { price: fallbackPrice, timestamp: Date.now() })
       return fallbackPrice
   }
@@ -158,17 +146,14 @@ export class AggregatorService {
     
     // Check if this is a mock quote (for testnet when no real DEX is available)
     if (quote.to === '0xE592427A0AEce92De3Edee1F18E0157C05861564' && quote.data === '0x') {
-      console.warn('Executing mock swap for testnet - this is a simulation')
       
       // For mock quotes, we'll just simulate a transaction
       const mockTxHash = '0x' + Math.random().toString(16).substr(2, 64)
-      console.log('Mock transaction hash:', mockTxHash)
       
       return mockTxHash
     }
 
     // Execute real transactions when we have a valid quote
-    console.log('Executing real transaction with signer:', signer.address)
 
     // Real swap execution with proper gas estimation
     try {
@@ -182,10 +167,6 @@ export class AggregatorService {
       // Add 20% buffer to gas estimate
       const gasLimit = (gasEstimate * 120n) / 100n;
 
-      console.log('Gas estimation:', {
-        estimated: gasEstimate.toString(),
-        withBuffer: gasLimit.toString()
-      });
 
       // Get current gas price
       const feeData = await signer.provider?.getFeeData();
@@ -200,7 +181,6 @@ export class AggregatorService {
         estimatedCost: ethers.formatEther(gasLimit * gasPrice)
       };
 
-      console.log('Transaction details:', txDetails);
 
       // Execute the transaction
       const tx = await signer.sendTransaction({
@@ -211,15 +191,12 @@ export class AggregatorService {
         gasPrice: gasPrice
       });
 
-      console.log('Transaction sent:', tx.hash);
       
       // Wait for confirmation
       const receipt = await tx.wait();
-      console.log('Transaction confirmed:', receipt);
       
       return receipt?.hash || tx.hash;
     } catch (error) {
-      console.error('Transaction execution failed:', error);
       throw new Error(`Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

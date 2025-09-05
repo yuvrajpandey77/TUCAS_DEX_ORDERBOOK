@@ -116,7 +116,6 @@ const LimitOrderCard = () => {
       setLimitPrice('');
 
     } catch (error) {
-      console.error('Error placing buy order:', error);
       toast({
         title: "Order Failed",
         description: error instanceof Error ? error.message : 'Failed to place buy order',
@@ -193,7 +192,6 @@ const LimitOrderCard = () => {
       setLimitPrice('');
 
     } catch (error) {
-      console.error('Error placing sell order:', error);
       toast({
         title: "Order Failed",
         description: error instanceof Error ? error.message : 'Failed to place sell order',

@@ -25,23 +25,14 @@ export function UserBalance() {
       setIsLoading(true)
       setError(null)
       
-      console.log('Fetching balances for:', {
-        address,
-        chainId,
-        networkName,
-        selectedPair
-      })
-      
       // Fetch native token balance
       try {
         const native = await tokenService.getBalance(address)
-        console.log('Native balance fetched:', native)
         setNativeBalance({
           balance: native.balance,
           symbol: native.symbol
         })
       } catch (error) {
-        console.error('Failed to fetch native balance:', error)
         setError('Failed to fetch native token balance')
       }
       
@@ -52,19 +43,11 @@ export function UserBalance() {
         const baseBalance = await dexService.getUserBalance(address, selectedPair.baseToken)
         const quoteBalance = await dexService.getUserBalance(address, selectedPair.quoteToken)
         
-        console.log('Token balances fetched:', {
-          baseToken: selectedPair.baseToken,
-          baseBalance,
-          quoteToken: selectedPair.quoteToken,
-          quoteBalance
-        })
-        
         setBalances({
           [selectedPair.baseToken]: baseBalance,
           [selectedPair.quoteToken]: quoteBalance,
         })
       } catch (error) {
-        console.error('Failed to fetch token balances:', error)
         // Set default values if contract is not available
         setBalances({
           [selectedPair.baseToken]: '0',
@@ -73,7 +56,6 @@ export function UserBalance() {
         setError('Failed to fetch token balances - contract may not be deployed')
       }
     } catch (error) {
-      console.error('Failed to fetch balances:', error)
       setError('Failed to fetch balances')
     } finally {
       setIsLoading(false)
@@ -84,37 +66,30 @@ export function UserBalance() {
     if (!address || !signer) return
     
     try {
-      console.log('Running debug test...')
       
       // Test 1: Check if provider is available
       const provider = signer.provider
-      console.log('Provider available:', !!provider)
       
       // Test 2: Check network
       if (provider) {
         const network = await provider.getNetwork()
-        console.log('Network:', network)
       }
       
       // Test 3: Check native balance directly
       if (provider) {
         const nativeBalance = await provider.getBalance(address)
-        console.log('Direct native balance:', nativeBalance.toString())
       }
       
       // Test 4: Check if MONAD token contract exists
       const nativeTokenAddress = '0x0000000000000000000000000000000000000000'
       if (provider) {
         const code = await provider.getCode(nativeTokenAddress)
-        console.log('Native token contract exists:', code !== '0x')
       }
       
       // Test 5: Try to get native token balance directly
       try {
         const nativeBalance = await tokenService.getTokenBalance(nativeTokenAddress, address)
-        console.log('Native token balance:', nativeBalance)
       } catch (error) {
-        console.error('Failed to get native token balance:', error)
       }
       
       setDebugInfo({
@@ -126,7 +101,6 @@ export function UserBalance() {
       })
       
     } catch (error) {
-      console.error('Debug test failed:', error)
     }
   }
 

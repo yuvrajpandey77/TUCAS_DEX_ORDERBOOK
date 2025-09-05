@@ -30,7 +30,6 @@ const DebugPanel = () => {
       const network = await provider.getNetwork();
       setNetworkInfo(network);
     } catch (error) {
-      console.error('Failed to get network info:', error);
       setNetworkInfo(null);
     }
   };
@@ -45,7 +44,6 @@ const DebugPanel = () => {
       const deployed = await checkContractDeployment();
       setIsContractDeployed(deployed);
     } catch (error) {
-      console.error('Failed to check contract deployment:', error);
       setIsContractDeployed(false);
     }
   };
@@ -174,20 +172,7 @@ const DebugPanel = () => {
               variant="outline"
               size="sm"
               onClick={() => {
-                console.log('Wallet State:', {
-                  isConnected,
-                  address,
-                  provider: !!provider,
-                  signer: !!signer,
-                  chainId,
-                  networkName,
-                  isLoading,
-                  error
-                });
-                console.log('DEX Store State:', {
-                  selectedPair,
-                  isContractDeployed
-                });
+                // Debug logging removed for production
               }}
               className="text-xs"
             >
@@ -197,11 +182,7 @@ const DebugPanel = () => {
               variant="outline"
               size="sm"
               onClick={() => {
-                if (window.ethereum) {
-                  console.log('MetaMask available:', window.ethereum);
-                } else {
-                  console.log('MetaMask not available');
-                }
+                // MetaMask check removed for production
               }}
               className="text-xs"
             >

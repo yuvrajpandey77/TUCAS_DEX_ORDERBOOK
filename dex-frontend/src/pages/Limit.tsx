@@ -37,8 +37,6 @@ const Limit = () => {
 
   // Add console log to verify page is loading
   useEffect(() => {
-    console.log('Limit page loaded successfully');
-    console.log('Selected pair:', selectedPair);
   }, [selectedPair]);
 
   return (

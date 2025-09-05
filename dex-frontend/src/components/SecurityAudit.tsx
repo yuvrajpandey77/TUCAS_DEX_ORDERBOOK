@@ -51,7 +51,6 @@ const SecurityAudit = () => {
       });
 
     } catch (error) {
-      console.error('Error performing security audit:', error);
       toast({
         title: "Audit Failed",
         description: error instanceof Error ? error.message : 'Failed to perform security audit',

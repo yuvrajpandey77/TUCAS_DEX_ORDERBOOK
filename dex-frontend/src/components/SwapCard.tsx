@@ -94,7 +94,6 @@ const SwapCard = () => {
         buyToken.address
       );
       
-      console.log(`Real-time price for ${sellToken.symbol}/${buyToken.symbol}:`, realTimePrice);
       setCurrentPrice(realTimePrice);
       
       // Calculate buy amount using real-time price
@@ -103,7 +102,6 @@ const SwapCard = () => {
       setBuyAmount(calculatedAmount.toFixed(6));
       
     } catch (error) {
-      console.error('Error calculating buy amount:', error);
       // Fallback to static calculation
       const fallbackRate = 0.8; // 1 MATIC = 0.8 USDC
       const calculatedAmount = parseFloat(sellAmt) * fallbackRate;
@@ -135,9 +133,9 @@ const SwapCard = () => {
 
   return (
     <>
-      <div className="swap-card w-full max-w-md mx-auto bg-background/95 backdrop-blur-sm border border-border/50 rounded-3xl shadow-2xl">
+      <div className="swap-card w-full max-w-md mx-auto bg-background backdrop-blur-xl border border-white/10 rounded-[28px]">
         {/* Top nav inside card */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-4 text-sm">
             <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary font-medium border border-primary/20">Swap</span>
             <button className="text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-accent/50">Limit</button>
@@ -162,14 +160,14 @@ const SwapCard = () => {
               </div>
             </div>
             
-            <div className="bg-muted/50 rounded-2xl p-5 border border-border/50 hover:border-border/80 transition-all duration-200">
+            <div className="rounded-2xl p-5 border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/[0.08] transition-all duration-200">
               <div className="flex items-center justify-between gap-3">
                 <input
                   type="text"
                   value={sellAmount}
                   onChange={(e) => handleSellAmountChange(e.target.value)}
                   placeholder="0.00"
-                  className="token-input flex-1 text-lg font-semibold bg-transparent border-none outline-none placeholder:text-muted-foreground/50"
+                  className="token-input flex-1 text-2xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/50"
                 />
                 <Button 
                   variant="ghost" 
@@ -187,7 +185,7 @@ const SwapCard = () => {
           {/* Swap Arrow - Perfectly Centered */}
           <div className="flex justify-center items-center relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border/30"></div>
+              <div className="w-full border-t border-white/10"></div>
             </div>
             <Button
               variant="ghost"
@@ -221,14 +219,14 @@ const SwapCard = () => {
               )}
             </div>
             
-            <div className="bg-muted/50 rounded-2xl p-5 border border-border/50 hover:border-border/80 transition-all duration-200">
+            <div className="rounded-2xl p-5 border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/[0.08] transition-all duration-200">
               <div className="flex items-center justify-between gap-3">
                 <input
                   type="text"
                   value={isCalculating ? 'Calculating...' : buyAmount}
                   readOnly
                   placeholder="0.00"
-                  className="token-input flex-1 text-lg font-semibold bg-transparent border-none outline-none placeholder:text-muted-foreground/50 cursor-not-allowed"
+                  className="token-input flex-1 text-2xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/50 cursor-not-allowed"
                 />
                 <Button 
                   variant="ghost" 
@@ -332,13 +330,6 @@ const SwapCard = () => {
                 // Convert amount to wei (18 decimals for ETH)
                 const sellAmountWei = ethers.parseEther(sellAmount || '0').toString();
                 
-                console.log('Attempting swap:', {
-                  sellToken: sellToken.symbol,
-                  buyToken: buyToken.symbol,
-                  sellAmount: sellAmount,
-                  sellAmountWei: sellAmountWei,
-                  takerAddress: address
-                });
 
                 // Show user confirmation
                 const confirmed = window.confirm(
@@ -356,7 +347,6 @@ const SwapCard = () => {
                   buyToken.address
                 );
                 
-                console.log('Using real-time price for swap:', realTimePrice);
                 
                 // Create a quote based on the real-time price
                 // Fix decimal precision issues by rounding to 6 decimal places
@@ -372,7 +362,6 @@ const SwapCard = () => {
                   const inversePrice = (1 / realTimePrice).toFixed(6);
                   inversePriceInWei = ethers.parseEther(inversePrice).toString();
                 } catch (parseError) {
-                  console.error('Error parsing ether values:', parseError);
                   // Fallback to simpler calculation
                   priceInWei = ethers.parseEther('2000').toString(); // Default 2000 USDC per ETH
                   inversePriceInWei = ethers.parseEther('0.0005').toString(); // 1/2000
@@ -390,14 +379,12 @@ const SwapCard = () => {
                 // Try to get a real quote from 0x API first
                 let quote;
                 try {
-                  console.log('Attempting to get real quote from 0x API...');
                   quote = await aggregatorService.getQuote({
                     sellToken: sellToken.address,
                     buyToken: buyToken.address,
                     sellAmount: sellAmountWei,
                     takerAddress: address,
                   });
-                  console.log('Real quote received from 0x API:', quote);
                   
                   // Validate quote before proceeding
                   if (!quote.to || quote.to === '0x0000000000000000000000000000000000000000') {
@@ -409,7 +396,6 @@ const SwapCard = () => {
                   }
                   
                 } catch (error) {
-                  console.warn('0x API failed, using Uniswap V3 on Polygon Amoy:', error);
                   
                   // Use Uniswap V3 on Polygon Amoy as fallback
                   const uniswapV3Router = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // Uniswap V3 Router
@@ -434,10 +420,8 @@ const SwapCard = () => {
                   };
                 }
                 
-                console.log('Quote created from real-time price:', quote);
                 
                 const txHash = await aggregatorService.executeSwap(signer, quote);
-                console.log('Swap executed successfully:', txHash);
                 
                 setLastTxHash(txHash);
                 
@@ -455,7 +439,6 @@ const SwapCard = () => {
                 setBuyAmount('0');
                 
               } catch (e) {
-                console.error('Swap failed:', e);
                 // Show user-friendly error message
                 const errorMessage = e instanceof Error ? e.message : 'Swap failed. Please try again.';
                 alert(`❌ Swap failed: ${errorMessage}`);

@@ -93,7 +93,6 @@ export const useDEXStore = create<DEXStore>((set, get) => ({
       const isDeployed = await dexService.isContractDeployed();
       return isDeployed;
     } catch (error) {
-      console.error('Contract deployment check failed:', error);
       return false;
     }
   },

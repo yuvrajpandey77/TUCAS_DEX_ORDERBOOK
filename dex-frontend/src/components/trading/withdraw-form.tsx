@@ -54,7 +54,6 @@ export function WithdrawForm() {
         setSelectedToken(newBalances[0].address)
       }
     } catch (error) {
-      console.error('Failed to fetch balances:', error)
       toast({
         title: "Error",
         description: "Failed to fetch balances",
@@ -84,7 +83,6 @@ export function WithdrawForm() {
       setWithdrawAmount('')
       await fetchBalances()
     } catch (error) {
-      console.error('Withdrawal failed:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to withdraw tokens'
       toast({
         title: "Withdrawal Failed",

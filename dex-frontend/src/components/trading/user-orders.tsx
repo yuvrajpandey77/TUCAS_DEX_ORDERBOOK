@@ -34,7 +34,6 @@ export function UserOrders() {
       const orders = await dexService.getUserOrders(account)
       setUserOrders(orders)
     } catch (error) {
-      console.error('Failed to fetch user orders:', error)
       toast({
         title: "Error",
         description: "Failed to fetch your orders",
@@ -61,7 +60,6 @@ export function UserOrders() {
       // Refresh orders
       await fetchUserOrders()
     } catch (error) {
-      console.error('Failed to cancel order:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to cancel order'
       toast({
         title: "Cancel Failed",

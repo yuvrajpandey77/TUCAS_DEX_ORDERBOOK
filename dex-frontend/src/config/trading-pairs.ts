@@ -60,7 +60,6 @@ export const getTradingPairs = (): TradingPair[] => {
     const pairsJson = import.meta.env.VITE_TRADING_PAIRS
     
     if (!pairsJson) {
-      console.warn('No trading pairs configured in environment (VITE_TRADING_PAIRS), using defaults')
       return DEFAULT_TRADING_PAIRS
     }
     
@@ -69,30 +68,24 @@ export const getTradingPairs = (): TradingPair[] => {
     // Validate and filter active pairs
     const validPairs = pairs.filter(pair => {
       if (!pair.baseToken || !pair.quoteToken || !pair.baseTokenSymbol || !pair.quoteTokenSymbol) {
-        console.warn('Invalid trading pair configuration:', pair)
         return false
       }
       
       if (!pair.isActive) {
-        console.log('Skipping inactive trading pair:', `${pair.baseTokenSymbol}/${pair.quoteTokenSymbol}`)
         return false
       }
       
       return true
     })
     
-    console.log(`Loaded ${validPairs.length} active trading pairs from environment`)
     
     // If no valid pairs from environment, use defaults
     if (validPairs.length === 0) {
-      console.warn('No valid trading pairs from environment, using defaults')
       return DEFAULT_TRADING_PAIRS
     }
     
     return validPairs
   } catch (error) {
-    console.error('Failed to parse trading pairs from environment:', error)
-    console.warn('Using default trading pairs due to parsing error')
     return DEFAULT_TRADING_PAIRS
   }
 }

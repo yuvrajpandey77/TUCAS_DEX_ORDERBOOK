@@ -11,18 +11,15 @@ export interface EnhancedWalletState extends WalletState {
 
 export const useWallet = () => {
   const { toast } = useToast();
-  const [state, setState] = useState<EnhancedWalletState>({
-    isConnected: false,
-    address: null,
-    provider: null,
-    signer: null,
-    chainId: null,
-    networkName: null,
-    error: null,
-    isLoading: false,
-    nativeBalance: null,
-    tokenBalances: [],
-    isAutoReconnecting: false,
+  // Initialize from the current wallet service state to avoid a one-frame mismatch on mount
+  const [state, setState] = useState<EnhancedWalletState>(() => {
+    const base = walletService.getState();
+    return {
+      ...base,
+      nativeBalance: null,
+      tokenBalances: [],
+      isAutoReconnecting: false,
+    };
   });
 
   // Subscribe to wallet service state changes
@@ -62,14 +59,12 @@ export const useWallet = () => {
         // Check if we have a stored connection
         const storedConnection = localStorage.getItem('wallet_connection');
         if (storedConnection) {
-          console.log('Found stored wallet connection, attempting auto-reconnect...');
           
           // The wallet service will handle the auto-reconnection
           // We just need to wait a bit for it to complete
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       } catch (error) {
-        console.error('Auto-reconnection check failed:', error);
       } finally {
         setState(prev => ({ ...prev, isAutoReconnecting: false }));
       }
@@ -81,10 +76,8 @@ export const useWallet = () => {
   // Connect wallet
   const connectWallet = useCallback(async () => {
     try {
-      console.log('Attempting to connect wallet...');
       const address = await walletService.connect();
       
-      console.log('Wallet connected successfully:', address);
       
       // Show success toast
       toast({
@@ -95,7 +88,6 @@ export const useWallet = () => {
       
       return address;
     } catch (error) {
-      console.error('Error connecting wallet:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect wallet';
       
       // Show error toast
@@ -143,7 +135,6 @@ export const useWallet = () => {
       
       return balance;
     } catch (error) {
-      console.error('Error fetching native balance:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch native balance';
       setState(prev => ({ ...prev, error: errorMessage }));
       throw error;
@@ -170,7 +161,6 @@ export const useWallet = () => {
       
       return balances;
     } catch (error) {
-      console.error('Error fetching token balances:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch token balances';
       setState(prev => ({ ...prev, error: errorMessage }));
       throw error;
@@ -201,7 +191,6 @@ export const useWallet = () => {
       
       return allBalances;
     } catch (error) {
-      console.error('Error fetching all balances:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch balances';
       setState(prev => ({ 
         ...prev, 

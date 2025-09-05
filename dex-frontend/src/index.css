@@ -158,7 +158,6 @@
   .swap-card {
     @apply relative rounded-3xl p-6 backdrop-blur-sm border border-border;
     background: rgba(255, 255, 255, 0.02);
-    box-shadow: var(--shadow-card);
   }
 
   .token-input {

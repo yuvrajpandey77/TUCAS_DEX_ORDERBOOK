@@ -74,7 +74,6 @@ export class RealTimePriceService {
           this.checkAlerts(pairId, update);
         }
       } catch (error) {
-        console.error('Error polling price updates:', error);
       }
     }, this.UPDATE_INTERVAL);
     
@@ -123,7 +122,6 @@ export class RealTimePriceService {
         isPositive
       };
     } catch (error) {
-      console.error('Error getting latest price:', error);
       return null;
     }
   }
@@ -186,7 +184,6 @@ export class RealTimePriceService {
     // Notify subscribers about the alert
     this.subscribers.forEach((callback, pairId) => {
       // You could emit alert events here
-      console.log('Price alert:', alert);
     });
   }
 

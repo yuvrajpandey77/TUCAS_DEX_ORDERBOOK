@@ -57,10 +57,8 @@ export function TradingPairManager() {
       } catch (error) {
         // If using placeholder addresses, assume active for demo
         if (isPlaceholderAddress(formData.baseToken) || isPlaceholderAddress(formData.quoteToken)) {
-          console.log('Using placeholder addresses, assuming trading pair is active for demo')
           isActive = true;
         } else {
-          console.error('Error checking trading pair status:', error);
           isActive = false;
         }
       }
@@ -81,7 +79,6 @@ export function TradingPairManager() {
         })
       }
     } catch (error) {
-      console.error('Failed to check trading pair status:', error)
       setPairStatus({ exists: false, isActive: false })
       toast({
         title: "Trading Pair Not Found",
@@ -108,7 +105,6 @@ export function TradingPairManager() {
       
       // Get current gas price
       const gasPrice = await provider.getFeeData()
-      console.log('Current gas price:', gasPrice)
       
       // Estimate gas for the transaction
       const contract = dexService.getContractForEstimation()
@@ -121,8 +117,6 @@ export function TradingPairManager() {
       
       // Add 20% buffer to gas estimate
       const gasLimit = BigInt(gasEstimate) * BigInt(120) / BigInt(100)
-      console.log('Estimated gas:', gasEstimate.toString())
-      console.log('Gas limit with buffer:', gasLimit.toString())
       
       const txHash = await dexService.addTradingPair(
         formData.baseToken,
@@ -142,7 +136,6 @@ export function TradingPairManager() {
       }, 2000)
       
     } catch (error) {
-      console.error('Failed to add trading pair:', error)
       let errorMessage = 'Failed to add trading pair'
       
       if (error instanceof Error) {
@@ -180,44 +173,32 @@ export function TradingPairManager() {
     if (!signer) return
     
     try {
-      console.log('=== CONTRACT DEBUG ===')
       
       const provider = signer.provider
       if (!provider) {
-        console.log('❌ No provider available')
         return
       }
       
       // Check if contract exists
       const contractAddress = '0x39DC69400B5A2eC3DC2b13fDd1D8c7f78b3D573e'
       const code = await provider.getCode(contractAddress)
-      console.log('Contract exists:', code !== '0x')
-      console.log('Contract code length:', code.length)
       
       // Check contract owner
       try {
         const contract = dexService.getContractForEstimation()
         const owner = await contract.owner()
-        console.log('Contract owner:', owner)
-        console.log('Your address:', await signer.getAddress())
-        console.log('Is owner:', owner.toLowerCase() === (await signer.getAddress()).toLowerCase())
       } catch (error) {
-        console.log('❌ Could not get contract owner:', error)
       }
       
       // Check if addTradingPair function exists
       try {
         const contract = dexService.getContractForEstimation()
         const hasFunction = contract.interface.hasFunction('addTradingPair')
-        console.log('Has addTradingPair function:', hasFunction)
       } catch (error) {
-        console.log('❌ Could not check function:', error)
       }
       
-      console.log('=== END DEBUG ===')
       
     } catch (error) {
-      console.error('Debug failed:', error)
     }
   }
 
@@ -225,7 +206,6 @@ export function TradingPairManager() {
     if (!signer) return
     
     try {
-      console.log('=== CHECKING EXISTING TRADING PAIRS ===')
       
       await dexService.initialize(signer)
       const contract = dexService.getContractForEstimation()
@@ -242,21 +222,17 @@ export function TradingPairManager() {
       for (const pair of commonPairs) {
         try {
           const pairInfo = await contract.tradingPairs(pair.base, pair.quote)
-          console.log(`${pair.name}:`, {
             exists: pairInfo[0] !== '0x0000000000000000000000000000000000000000',
             isActive: pairInfo[2],
             minOrderSize: pairInfo[3].toString(),
             pricePrecision: pairInfo[4].toString()
           })
         } catch (error) {
-          console.log(`${pair.name}: Error checking - ${error}`)
         }
       }
       
-      console.log('=== END CHECKING PAIRS ===')
       
     } catch (error) {
-      console.error('Failed to check existing pairs:', error)
     }
   }
 

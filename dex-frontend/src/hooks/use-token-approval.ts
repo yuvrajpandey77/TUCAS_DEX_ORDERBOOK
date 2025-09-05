@@ -78,7 +78,6 @@ export const useTokenApproval = () => {
 
       return isApproved;
     } catch (error) {
-      console.error('Error checking approval:', error);
       setApprovalStates(prev => ({
         ...prev,
         [tokenAddress]: {
@@ -160,7 +159,6 @@ export const useTokenApproval = () => {
 
       return true;
     } catch (error) {
-      console.error('Error approving tokens:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to approve tokens';
       
       setApprovalStates(prev => ({

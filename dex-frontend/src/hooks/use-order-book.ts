@@ -162,7 +162,6 @@ export const useOrderBook = () => {
       // Try to fetch from smart contract if connected
       if (isConnected && signer) {
         try {
-          console.log('Fetching order book from smart contract...');
           await dexService.initialize(signer);
           
           // Check if contract is deployed
@@ -176,7 +175,6 @@ export const useOrderBook = () => {
             selectedPair.quoteToken
           );
 
-          console.log('Raw order book data:', contractOrderBook);
 
           // Process and format the orders with proper error handling
           const processedBuyOrders = contractOrderBook.buyOrders
@@ -202,7 +200,6 @@ export const useOrderBook = () => {
                   total
                 };
               } catch (error) {
-                console.error('Error processing buy order:', error);
                 return null;
               }
             })
@@ -233,7 +230,6 @@ export const useOrderBook = () => {
                   total
                 };
               } catch (error) {
-                console.error('Error processing sell order:', error);
                 return null;
               }
             })
@@ -247,10 +243,8 @@ export const useOrderBook = () => {
           };
 
           setIsUsingMockData(false);
-          console.log('Processed order book data:', orderBook);
 
         } catch (contractError) {
-          console.error('Contract fetch failed, using enhanced mock data:', contractError);
           
           // Use enhanced mock data when contract is not available
           orderBook = getMockOrderBook(selectedPair.baseToken, selectedPair.quoteToken);
@@ -287,7 +281,6 @@ export const useOrderBook = () => {
       setLastUpdate(Date.now());
 
     } catch (err) {
-      console.error('Error fetching order book:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch order book');
       // Fallback to mock data
       const mockData = getMockOrderBook(selectedPair.baseToken, selectedPair.quoteToken);

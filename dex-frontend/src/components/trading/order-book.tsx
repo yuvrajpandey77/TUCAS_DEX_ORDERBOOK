@@ -21,7 +21,6 @@ export function OrderBook() {
       )
       setOrderBook(orderBookData)
     } catch (error) {
-      console.error('Failed to fetch order book:', error)
     } finally {
       setLoading(false)
     }

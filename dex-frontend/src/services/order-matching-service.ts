@@ -209,7 +209,6 @@ export class OrderMatchingService {
             txHash: `0x${Math.random().toString(16).slice(2, 66)}` // Simulated tx hash
           });
         } catch (error) {
-          console.error('Error executing match:', error);
         }
       }
 
@@ -221,7 +220,6 @@ export class OrderMatchingService {
       };
 
     } catch (error) {
-      console.error('Error executing market order:', error);
       return {
         matched: false,
         error: error instanceof Error ? error.message : 'Failed to execute market order'
@@ -320,7 +318,6 @@ export class OrderMatchingService {
         };
       }
     } catch (error) {
-      console.error('Error checking immediate fill:', error);
       return { canFill: false };
     }
   }
@@ -388,7 +385,6 @@ export class OrderMatchingService {
         midPrice
       };
     } catch (error) {
-      console.error('Error getting order book depth:', error);
       throw error;
     }
   }

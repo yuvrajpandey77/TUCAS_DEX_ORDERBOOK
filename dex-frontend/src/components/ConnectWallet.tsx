@@ -114,7 +114,6 @@ const ConnectWallet = ({ isOpen, onClose }: ConnectWalletProps) => {
       }
       
     } catch (error) {
-      console.error('MetaMask connection failed:', error);
       setConnectionStep('error');
       setErrorDetails(error instanceof Error ? error.message : 'Failed to connect MetaMask');
       

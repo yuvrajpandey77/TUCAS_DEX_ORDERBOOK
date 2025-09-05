@@ -65,7 +65,6 @@ export const useOrderMatching = () => {
 
       return result.canFill;
     } catch (error) {
-      console.error('Error checking immediate fill:', error);
       setMatchingState(prev => ({
         ...prev,
         isChecking: false,
@@ -124,7 +123,6 @@ export const useOrderMatching = () => {
 
       return result;
     } catch (error) {
-      console.error('Error executing market order:', error);
       setMatchingState(prev => ({
         ...prev,
         isExecuting: false,
@@ -154,7 +152,6 @@ export const useOrderMatching = () => {
         signer
       );
     } catch (error) {
-      console.error('Error getting order book depth:', error);
       return null;
     }
   }, [isConnected, signer, selectedPair]);

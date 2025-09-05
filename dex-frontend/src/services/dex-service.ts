@@ -35,7 +35,6 @@ export class DEXService {
         
         if (isCircuitBreakerError && attempt < maxRetries) {
           const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff
-          console.log(`Circuit breaker error detected. Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
           
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
@@ -51,7 +50,6 @@ export class DEXService {
 
   async initialize(signer: ethers.JsonRpcSigner) {
     try {
-      console.log('Initializing DEX service with contract address:', this.contractAddress)
       
       // Store the signer
       this.signer = signer
@@ -79,29 +77,23 @@ export class DEXService {
             '0x0000000000000000000000000000000000000000',
             '0x0000000000000000000000000000000000000000'
           )
-          console.log('DEX contract initialized successfully')
         } catch (error) {
-          console.warn('Contract function call failed, but contract exists:', error)
           // Contract exists but may not have the expected functions
           // We'll continue anyway and handle errors in individual functions
         }
       } catch (error) {
-        console.warn('Contract deployment check failed:', error)
         
         // Handle MetaMask RPC errors specifically
         if (error instanceof Error && error.message.includes('Internal JSON-RPC error')) {
-          console.warn('MetaMask RPC error detected, but continuing with demo mode')
           // In demo mode, we'll continue even with RPC errors
         } else {
           throw new Error('DEX contract is not deployed at the specified address. Please deploy the contract first.')
         }
       }
     } catch (error) {
-      console.error('Failed to initialize DEX contract:', error)
       
       // Handle MetaMask RPC errors
       if (error instanceof Error && error.message.includes('Internal JSON-RPC error')) {
-        console.warn('MetaMask RPC error during initialization, but continuing in demo mode')
         // In demo mode, we'll continue even with RPC errors
         return
       }
@@ -117,28 +109,20 @@ export class DEXService {
   async isContractDeployed(): Promise<boolean> {
     try {
       if (!this.contract) {
-        console.warn('DEX service not initialized. Contract deployment check failed.')
         return false
       }
       
       const provider = this.contract.runner?.provider
       if (!provider) {
-        console.warn('No provider available for contract deployment check.')
         return false
       }
       
       const code = await provider.getCode(this.contractAddress)
       const isDeployed = code !== '0x'
       
-      console.log('Contract deployment check:', {
-        address: this.contractAddress,
-        codeLength: code.length,
-        isDeployed
-      })
       
       return isDeployed
     } catch (error) {
-      console.warn('Contract deployment check failed:', error)
       return false
     }
   }
@@ -167,7 +151,6 @@ export class DEXService {
 
     return this.executeWithRetry(async () => {
       try {
-        console.log('Adding trading pair:', { baseToken, quoteToken, minOrderSize, pricePrecision })
         
         const tx = await contract.addTradingPair(
           baseToken,
@@ -176,13 +159,10 @@ export class DEXService {
           pricePrecision
         )
         
-        console.log('Add trading pair transaction sent:', tx.hash)
         const receipt = await tx.wait()
-        console.log('Add trading pair transaction confirmed:', receipt.transactionHash)
         
         return receipt.transactionHash
       } catch (error) {
-        console.error('Error adding trading pair:', error)
         
         // Handle circuit breaker errors specifically
         if (error instanceof Error) {
@@ -217,7 +197,6 @@ export class DEXService {
   // Check if trading pair exists and is active
   async isTradingPairActive(_baseToken: string, _quoteToken: string): Promise<boolean> {
     // DEMO MODE: Always return true for demo purposes
-    console.log('DEMO MODE: Assuming all trading pairs are active')
     return true;
     
     // Original code commented out for demo purposes
@@ -225,7 +204,6 @@ export class DEXService {
     const contract = this.getContract()
 
     try {
-      console.log('Checking trading pair status:', { baseToken, quoteToken })
       
       // Check if these are placeholder/test addresses
       const isPlaceholderAddress = (address: string) => {
@@ -240,20 +218,16 @@ export class DEXService {
       
       // If using placeholder addresses, assume active for demo purposes
       if (isPlaceholderAddress(baseToken) || isPlaceholderAddress(quoteToken)) {
-        console.log('Using placeholder addresses, assuming trading pair is active for demo')
         return true
       }
       
       const pairInfo = await contract.tradingPairs(baseToken, quoteToken)
       const isActive = pairInfo[2] // Assuming the third element is the active status
       
-      console.log('Trading pair status:', { isActive })
       return isActive
     } catch (error) {
-      console.error('Error checking trading pair status:', error)
       
       // If we can't check the blockchain, assume active for demo purposes
-      console.log('Assuming trading pair is active due to blockchain check failure')
       return true
     }
     */
@@ -270,10 +244,8 @@ export class DEXService {
     const contract = this.getContract()
 
     try {
-      console.log('Placing limit order:', { baseToken, quoteToken, amount, price, isBuy })
       
       // DEMO MODE: Skip trading pair active check for limit orders
-      console.log('DEMO MODE: Skipping trading pair active check for limit orders')
       
       // Calculate required value for native token transactions
       let overrides: any = {}
@@ -297,11 +269,8 @@ export class DEXService {
           isBuy,
           overrides
         )
-        console.log('Gas estimate successful:', gasEstimate.toString())
       } catch (estimateError) {
-        console.log('Gas estimate failed:', estimateError)
         if (estimateError instanceof Error && estimateError.message.includes('Trading pair not active')) {
-          console.log('DEMO MODE: Trading pair not active during gas estimate, returning demo success')
           // Return a fake transaction hash for demo purposes
           return '0xDEMO_TRANSACTION_HASH_' + Date.now()
         }
@@ -318,13 +287,10 @@ export class DEXService {
         overrides
       )
       
-      console.log('Limit order transaction sent:', tx.hash)
       const receipt = await tx.wait()
-      console.log('Limit order transaction confirmed:', receipt.transactionHash)
       
       return receipt.transactionHash
     } catch (error) {
-      console.error('Error placing limit order:', error)
       
       // Provide more specific error messages
       if (error instanceof Error) {
@@ -335,7 +301,6 @@ export class DEXService {
         } else if (error.message.includes('execution reverted')) {
           if (error.message.includes('Trading pair not active')) {
             // DEMO MODE: Don't throw error for trading pair not active
-            console.log('DEMO MODE: Ignoring trading pair not active error in limit order')
             // Return a mock transaction hash for demo purposes
             return '0xDEMO_LIMIT_ORDER_' + Date.now()
           } else if (error.message.includes('Insufficient balance')) {
@@ -366,10 +331,8 @@ export class DEXService {
     const contract = this.getContract()
 
     try {
-      console.log('Placing market order:', { baseToken, quoteToken, amount, isBuy })
       
       // DEMO MODE: Skip trading pair active check for market orders
-      console.log('DEMO MODE: Skipping trading pair active check for market orders')
       
       // DEMO MODE: Try to estimate gas first, if it fails due to trading pair not active, 
       // we'll catch it and return a demo success
@@ -380,11 +343,8 @@ export class DEXService {
           amount,
           isBuy
         )
-        console.log('Gas estimate successful:', gasEstimate.toString())
       } catch (estimateError) {
-        console.log('Gas estimate failed:', estimateError)
         if (estimateError instanceof Error && estimateError.message.includes('Trading pair not active')) {
-          console.log('DEMO MODE: Trading pair not active during gas estimate, returning demo success')
           // Return a fake transaction hash for demo purposes
           return '0xDEMO_TRANSACTION_HASH_' + Date.now()
         }
@@ -399,13 +359,10 @@ export class DEXService {
         isBuy
       )
       
-      console.log('Market order transaction sent:', tx.hash)
       const receipt = await tx.wait()
-      console.log('Market order transaction confirmed:', receipt.transactionHash)
       
       return receipt.transactionHash
     } catch (error) {
-      console.error('Error placing market order:', error)
       
       if (error instanceof Error) {
         if (error.message.includes('insufficient funds')) {
@@ -415,7 +372,6 @@ export class DEXService {
         } else if (error.message.includes('execution reverted')) {
           if (error.message.includes('Trading pair not active')) {
             // DEMO MODE: Don't throw error for trading pair not active
-            console.log('DEMO MODE: Ignoring trading pair not active error in market order')
             // Return a mock transaction hash for demo purposes
             return '0xDEMO_MARKET_ORDER_' + Date.now()
           } else if (error.message.includes('Insufficient balance')) {
@@ -442,7 +398,6 @@ export class DEXService {
     const contract = this.getContract()
 
     try {
-      console.log('Fetching order book for:', { baseToken, quoteToken })
       
       const [buyPrices, buyAmounts, sellPrices, sellAmounts] = await contract.getOrderBook(
         baseToken,
@@ -474,10 +429,8 @@ export class DEXService {
         })),
       }
       
-      console.log('Order book fetched successfully:', result)
       return result
     } catch (error) {
-      console.error('Error fetching order book:', error)
       // Return empty order book if contract call fails
       return {
         buyOrders: [],
@@ -491,7 +444,6 @@ export class DEXService {
     const contract = this.getContract()
 
     try {
-      console.log('Fetching user orders for:', userAddress)
       
       const orderIds = await contract.getUserOrders(userAddress)
       
@@ -508,10 +460,8 @@ export class DEXService {
         timestamp: Date.now(),
       }))
       
-      console.log('User orders fetched:', orders)
       return orders
     } catch (error) {
-      console.error('Error fetching user orders:', error)
       return []
     }
   }
@@ -519,7 +469,6 @@ export class DEXService {
   // Get user balance for a token
   async getUserBalance(userAddress: string, tokenAddress: string): Promise<string> {
     try {
-      console.log('Fetching user balance:', { userAddress, tokenAddress })
       
       if (!this.signer) {
         throw new Error('DEX service not initialized. Please call initialize() first.')
@@ -527,29 +476,23 @@ export class DEXService {
       
       // Check if this is a native token (zero address)
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-        console.log('Fetching native token balance')
         const provider = this.signer.provider
         if (!provider) {
           throw new Error('No provider available')
         }
         
         const balance = await provider.getBalance(userAddress)
-        console.log('Native token balance fetched:', balance.toString())
         return balance.toString()
       }
       
       // Use TokenService to get balance for ERC-20 tokens
-      console.log('Fetching ERC-20 token balance')
       const tokenService = createTokenService(tokenAddress)
       await tokenService.initialize(this.signer)
       
       const balance = await tokenService.getBalance(userAddress)
       
-      console.log('ERC-20 token balance fetched:', balance)
       return balance
     } catch (error) {
-      console.error('Error fetching user balance:', error)
-      console.log('Returning 0 balance due to error')
       return '0'
     }
   }
@@ -559,17 +502,13 @@ export class DEXService {
     const contract = this.getContract()
 
     try {
-      console.log('Cancelling order:', orderId)
       
       const tx = await contract.cancelOrder(orderId)
-      console.log('Cancel order transaction sent:', tx.hash)
       
       const receipt = await tx.wait()
-      console.log('Cancel order transaction confirmed:', receipt.transactionHash)
       
       return receipt.transactionHash
     } catch (error) {
-      console.error('Error cancelling order:', error)
       
       if (error instanceof Error) {
         if (error.message.includes('insufficient funds')) {
@@ -590,17 +529,13 @@ export class DEXService {
     const contract = this.getContract()
 
     try {
-      console.log('Withdrawing tokens:', { tokenAddress, amount })
       
       const tx = await contract.withdraw(tokenAddress, amount)
-      console.log('Withdraw transaction sent:', tx.hash)
       
       const receipt = await tx.wait()
-      console.log('Withdraw transaction confirmed:', receipt.transactionHash)
       
       return receipt.transactionHash
     } catch (error) {
-      console.error('Error withdrawing tokens:', error)
       
       if (error instanceof Error) {
         if (error.message.includes('insufficient funds')) {
