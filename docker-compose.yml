@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  monad-dex-backend:
+    build: .
+    container_name: monad-dex-backend
+    environment:
+      - RUST_LOG=info
+      - RPC_URL=https://rpc.testnet.monad.xyz
+      - CHAIN_ID=1337
+      - GAS_PRICE=20000000000
+      - PRIVATE_KEY=${PRIVATE_KEY}
+    volumes:
+      - ./out:/app/out
+      - ./scripts:/app/scripts
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    command: ["./scripts/deploy-backend.sh"]
+
+  # Optional: Add a database for state management
+  # postgres:
+  #   image: postgres:15
+  #   container_name: monad-dex-db
+  #   environment:
+  #     - POSTGRES_DB=monad_dex
+  #     - POSTGRES_USER=monad_user
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data: 

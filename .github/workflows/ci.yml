@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: MainFrontend/frontend/package-lock.json
+    
+    - name: Install frontend dependencies
+      run: |
+        cd MainFrontend/frontend
+        npm ci
+    
+    - name: Build frontend
+      run: |
+        cd MainFrontend/frontend
+        npm run build
+    
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    
+    - name: Build Rust tools
+      run: cargo build --release
+    
+    - name: Run frontend tests (if any)
+      run: |
+        cd MainFrontend/frontend
+        npm run lint
+      continue-on-error: true 

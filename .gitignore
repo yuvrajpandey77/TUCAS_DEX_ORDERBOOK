@@ -1,0 +1,27 @@
+# Rust
+target/
+Cargo.lock
+
+# Foundry
+out/
+cache/
+broadcast/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Config files with sensitive data
+config/deployment.json

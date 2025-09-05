@@ -1,0 +1,279 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Uniswap-inspired DEX Design System - Dark Theme with Crypto Gradients */
+
+@layer base {
+  :root {
+    /* Dark soothing theme (bluish charcoal) */
+    --background: 220 25% 10%;
+    --foreground: 0 0% 98%;
+
+    /* Card components */
+    --card: 220 22% 12%;
+    --card-foreground: 0 0% 98%;
+
+    /* Popover and modals */
+    --popover: 213 25% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary - Softer Premium Yellow (reduced saturation, higher lightness) */
+    --primary: 45 85% 62%;
+    --primary-foreground: 222 84% 5%;
+    --primary-glow: 45 85% 72%;
+
+    /* Secondary - Deep Blue */
+    --secondary: 222 85% 12%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Muted colors */
+    --muted: 220 20% 18%;
+    --muted-foreground: 0 0% 63%;
+
+    /* Accent colors */
+    --accent: 222 80% 8%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders and inputs */
+    --border: 220 20% 22%;
+    --input: 220 20% 16%;
+    --ring: 45 95% 56%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(45 95% 56%), hsl(222 85% 12%));
+    /* Main background gradient (layered subtle glows + vertical depth) */
+    --gradient-hero:
+      radial-gradient(1200px 600px at 15% 12%, hsl(45 85% 62% / 0.08), transparent 70%),
+      radial-gradient(1000px 800px at 85% 80%, hsl(220 25% 16% / 0.12), transparent 72%),
+      linear-gradient(180deg, hsl(220 25% 12%) 0%, hsl(220 25% 10%) 55%, hsl(220 25% 9%) 100%);
+    --gradient-orb: radial-gradient(circle, hsl(var(--primary) / 0.3), transparent 70%);
+
+    /* Shadows and glows */
+    --shadow-card: 0 10px 30px -10px hsl(213 27% 4% / 0.3);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.2);
+    --shadow-orb: 0 0 100px hsl(var(--primary) / 0.4);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --radius: 1rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    background: var(--gradient-hero);
+    min-height: 100vh;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Crypto-specific component styles */
+@layer components {
+  .hero-button {
+    @apply relative overflow-hidden rounded-2xl px-6 py-3 font-semibold transition-all;
+    background: hsl(var(--primary));
+    box-shadow: var(--shadow-glow);
+  }
+
+  .hero-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow), 0 4px 20px hsl(var(--primary) / 0.4);
+  }
+
+  .outline-button {
+    @apply border border-border bg-transparent hover:bg-accent rounded-xl px-4 py-2 text-sm font-medium transition-all;
+  }
+
+  .outline-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .swap-card {
+    @apply relative rounded-3xl p-6 backdrop-blur-sm border border-border;
+    background: rgba(255, 255, 255, 0.02);
+    box-shadow: var(--shadow-card);
+  }
+
+  .token-input {
+    @apply w-full bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground outline-none;
+  }
+
+  .floating-orb {
+    @apply absolute rounded-full opacity-60;
+    filter: blur(80px);
+    animation: float 20s ease-in-out infinite;
+  }
+
+  .floating-orb:hover {
+    filter: blur(40px);
+    opacity: 0.8;
+  }
+
+  .nav-dropdown {
+    @apply absolute top-6 left-0 mt-2 w-48 rounded-2xl border border-border backdrop-blur-sm z-50;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Typography utilities for DEX */
+  .font-heading {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'ss02', 'cv01', 'cv02';
+    letter-spacing: -0.025em;
+  }
+
+  .font-display {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'ss02', 'cv01', 'cv02';
+    letter-spacing: -0.02em;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-feature-settings: 'liga', 'calt', 'zero', 'ss01', 'ss02';
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-code {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-feature-settings: 'liga', 'calt', 'zero', 'ss01', 'ss02';
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Financial data styling */
+  .price-display {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    @apply text-lg font-semibold;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .token-amount {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    @apply font-medium;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .address-display {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    @apply text-sm;
+    font-feature-settings: 'liga', 'calt';
+  }
+}
+
+/* Floating orb animations */
+@keyframes float {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  33% {
+    transform: translate(30px, -30px) rotate(120deg);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) rotate(240deg);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+  }
+}
+
+@keyframes float2 {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  50% {
+    transform: translate(-40px, -20px) rotate(180deg);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+  }
+}
+
+@keyframes float3 {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(20px, 30px) rotate(90deg);
+  }
+
+  75% {
+    transform: translate(-30px, -10px) rotate(270deg);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+  }
+}
