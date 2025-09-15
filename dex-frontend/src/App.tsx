@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ScrollToTop from "@/components/ScrollToTop";
+import { YellowNetworkProvider } from "@/components/YellowNetworkProvider";
 import Index from "./pages/Index";
 import Limit from "./pages/Limit";
 import Trading from "./pages/Trading";
@@ -13,6 +14,8 @@ import Explore from "./pages/Explore";
 import Pool from "./pages/Pool";
 import Debug from "./pages/debug";
 import WalletTest from "./pages/WalletTest";
+import UniswapDemo from "./pages/UniswapDemo";
+import QuoteTest from "./pages/QuoteTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -26,29 +29,33 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <YellowNetworkProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/swap" element={<Swap />} />
-            <Route path="/limit" element={<Limit />} />
-            <Route path="/trading" element={<Trading />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/pool" element={<Pool />} />
-            <Route path="/debug" element={<Debug />} />
-            <Route path="/wallet-test" element={<WalletTest />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ErrorBoundary>
+            <ScrollToTop />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/swap" element={<Swap />} />
+              <Route path="/limit" element={<Limit />} />
+              <Route path="/trading" element={<Trading />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/pool" element={<Pool />} />
+              <Route path="/debug" element={<Debug />} />
+              <Route path="/wallet-test" element={<WalletTest />} />
+              <Route path="/uniswap-demo" element={<UniswapDemo />} />
+              <Route path="/quote-test" element={<QuoteTest />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
+      </YellowNetworkProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;

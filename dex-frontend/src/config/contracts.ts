@@ -39,18 +39,18 @@ export const CONTRACTS = {
 
 export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000';
 
-export const RPC_URL = 'https://rpc-amoy.polygon.technology';
-export const CHAIN_ID = 80002;
+export const RPC_URL = 'https://rpc.sepolia.org';
+export const CHAIN_ID = 11155111;
 
 // Network configuration
 export const NETWORK_CONFIG = {
   chainId: CHAIN_ID,
   rpcUrl: RPC_URL,
-  name: 'Polygon Amoy',
+  name: 'Ethereum Sepolia',
   nativeCurrency: {
-    name: 'MATIC',
-    symbol: 'MATIC',
+    name: 'Ethereum',
+    symbol: 'ETH',
     decimals: 18,
   },
-  blockExplorerUrls: ['https://amoy.polygonscan.com'],
+  blockExplorerUrls: ['https://sepolia.etherscan.io'],
 } as const; 

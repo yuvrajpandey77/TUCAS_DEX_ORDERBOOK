@@ -22,15 +22,15 @@ const SwapCard = () => {
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [isManualSwap, setIsManualSwap] = useState(false); // Flag to prevent auto-calculation during manual swap
   const [sellToken, setSellToken] = useState<Token>({
-    symbol: 'MATIC',
-    name: 'Polygon',
-    address: '0x0000000000000000000000000000000000000000',
+    symbol: 'ETH',
+    name: 'Ethereum',
+    address: '0x0000000000000000000000000000000000000000', // Native ETH on Ethereum Sepolia
     logo: '⬟'
   });
   const [buyToken, setBuyToken] = useState<Token | null>({
     symbol: 'USDC',
     name: 'USD Coin',
-    address: '0x0FA8781a83E46826621b3BC094Ea2A0212e71B23',
+    address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', // Official USDC on Ethereum Sepolia testnet
     logo: '🪙'
   });
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
