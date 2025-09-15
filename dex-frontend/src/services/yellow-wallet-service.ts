@@ -1,5 +1,8 @@
 import { BrowserProvider, JsonRpcSigner } from 'ethers';
 import { ETH_NETWORK_CONFIG } from '@/config/network';
+import { yellowNetworkService } from './yellow-network-service';
+import { yellowWebSocketService } from './yellow-websocket-service';
+import { YELLOW_NETWORK_CONFIG, StateChannel } from '@/config/yellow-network';
 
 // Extend the Window interface to include MetaMask
 declare global {
@@ -19,7 +22,7 @@ declare global {
   }
 }
 
-export interface WalletState {
+export interface YellowWalletState {
   isConnected: boolean;
   address: string | null;
   provider: BrowserProvider | null;
@@ -28,6 +31,12 @@ export interface WalletState {
   networkName: string | null;
   error: string | null;
   isLoading: boolean;
+  // Yellow Network specific state
+  isYellowNetworkConnected: boolean;
+  stateChannels: StateChannel[];
+  activeStateChannel: StateChannel | null;
+  yellowTokenBalance: string;
+  isInitializingYellow: boolean;
 }
 
 export interface WalletError {
@@ -36,8 +45,17 @@ export interface WalletError {
   userMessage: string;
 }
 
-export class WalletService {
-  private state: WalletState = {
+/**
+ * Enhanced Wallet Service with Yellow Network Integration
+ * 
+ * This service extends the basic wallet functionality to include:
+ * - Yellow Network state channel management
+ * - $YELLOW token balance tracking
+ * - Real-time WebSocket connection
+ * - Cross-chain trading capabilities
+ */
+export class YellowWalletService {
+  private state: YellowWalletState = {
     isConnected: false,
     address: null,
     provider: null,
@@ -46,19 +64,24 @@ export class WalletService {
     networkName: null,
     error: null,
     isLoading: false,
+    isYellowNetworkConnected: false,
+    stateChannels: [],
+    activeStateChannel: null,
+    yellowTokenBalance: '0',
+    isInitializingYellow: false,
   };
 
-  private listeners: Set<(state: WalletState) => void> = new Set();
+  private listeners: Set<(state: YellowWalletState) => void> = new Set();
   private cleanupListeners: (() => void) | null = null;
 
   // Singleton pattern
-  private static instance: WalletService;
+  private static instance: YellowWalletService;
   
-  public static getInstance(): WalletService {
-    if (!WalletService.instance) {
-      WalletService.instance = new WalletService();
+  public static getInstance(): YellowWalletService {
+    if (!YellowWalletService.instance) {
+      YellowWalletService.instance = new YellowWalletService();
     }
-    return WalletService.instance;
+    return YellowWalletService.instance;
   }
 
   constructor() {
@@ -69,7 +92,7 @@ export class WalletService {
   /**
    * Subscribe to wallet state changes
    */
-  subscribe(listener: (state: WalletState) => void): () => void {
+  subscribe(listener: (state: YellowWalletState) => void): () => void {
     this.listeners.add(listener);
     listener(this.state);
     
@@ -81,7 +104,7 @@ export class WalletService {
   /**
    * Update state and notify listeners
    */
-  private updateState(updates: Partial<WalletState>): void {
+  private updateState(updates: Partial<YellowWalletState>): void {
     this.state = { ...this.state, ...updates };
     this.listeners.forEach(listener => listener(this.state));
   }
@@ -89,7 +112,7 @@ export class WalletService {
   /**
    * Get current wallet state
    */
-  getState(): WalletState {
+  getState(): YellowWalletState {
     return { ...this.state };
   }
 
@@ -137,7 +160,7 @@ export class WalletService {
 
     try {
       // Check if we have a stored connection
-      const storedConnection = localStorage.getItem('wallet_connection');
+      const storedConnection = localStorage.getItem('yellow_wallet_connection');
       if (!storedConnection) return;
 
       const { address, chainId } = JSON.parse(storedConnection);
@@ -197,9 +220,11 @@ export class WalletService {
         error: null,
       });
 
+      // Initialize Yellow Network
+      await this.initializeYellowNetwork(signer);
+
       // Set up event listeners
       this.setupEventListeners();
-
 
     } catch (error) {
       this.clearStoredConnection();
@@ -208,28 +233,7 @@ export class WalletService {
   }
 
   /**
-   * Store connection information
-   */
-  private storeConnection(address: string, chainId: string): void {
-    if (typeof window === 'undefined') return;
-    
-    localStorage.setItem('wallet_connection', JSON.stringify({
-      address,
-      chainId,
-      timestamp: Date.now()
-    }));
-  }
-
-  /**
-   * Clear stored connection
-   */
-  private clearStoredConnection(): void {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem('wallet_connection');
-  }
-
-  /**
-   * Connect to MetaMask wallet
+   * Connect to MetaMask wallet and initialize Yellow Network
    */
   async connect(): Promise<string> {
     try {
@@ -283,12 +287,15 @@ export class WalletService {
       // Set up event listeners
       this.setupEventListeners();
 
-      // Try to switch to Polygon Amoy
+      // Try to switch to Sepolia
       try {
-        await this.switchToPolygonNetwork();
+        await this.switchToSepoliaNetwork();
       } catch (switchError) {
         // Don't fail the connection if network switch fails
       }
+
+      // Initialize Yellow Network
+      await this.initializeYellowNetwork(signer);
 
       return address;
 
@@ -303,15 +310,155 @@ export class WalletService {
         networkName: null,
         isLoading: false,
         error: walletError.userMessage,
+        isYellowNetworkConnected: false,
+        stateChannels: [],
+        activeStateChannel: null,
+        yellowTokenBalance: '0',
+        isInitializingYellow: false,
       });
       throw walletError;
     }
   }
 
   /**
-   * Switch to Polygon Amoy network
+   * Initialize Yellow Network connection
    */
-  async switchToPolygonNetwork(): Promise<void> {
+  private async initializeYellowNetwork(signer: JsonRpcSigner): Promise<void> {
+    try {
+      this.updateState({ isInitializingYellow: true });
+
+      // Initialize Yellow Network service
+      await yellowNetworkService.initialize(signer);
+      
+      // Connect to WebSocket
+      await yellowWebSocketService.connect();
+      
+      // Load state channels
+      await this.loadStateChannels();
+      
+      // Get $YELLOW token balance
+      await this.updateYellowTokenBalance();
+      
+      this.updateState({
+        isYellowNetworkConnected: true,
+        isInitializingYellow: false,
+      });
+
+      console.log('Yellow Network initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Yellow Network:', error);
+      this.updateState({
+        isYellowNetworkConnected: false,
+        isInitializingYellow: false,
+        error: 'Failed to connect to Yellow Network',
+      });
+    }
+  }
+
+  /**
+   * Load state channels from Yellow Network
+   */
+  private async loadStateChannels(): Promise<void> {
+    try {
+      // In a real implementation, this would load from the blockchain
+      // For now, we'll use mock data
+      const mockStateChannels: StateChannel[] = [
+        {
+          id: 'channel_1',
+          status: 'open',
+          collateral: '1000000000000000000', // 1 $YELLOW
+          counterparty: '0x742d35Cc6634C0532925a3b8D0C0E1C4C5C5C5C5',
+          createdAt: Date.now() - 86400000, // 1 day ago
+          lastSettlement: Date.now() - 3600000, // 1 hour ago
+          distributionRatio: 0.5,
+          marginCallThreshold: 0.8,
+          challengePeriod: 300,
+          totalVolume: '5000000000000000000000', // 5000 $YELLOW
+          lastTrade: Date.now() - 300000, // 5 minutes ago
+        }
+      ];
+
+      this.updateState({ stateChannels: mockStateChannels });
+    } catch (error) {
+      console.error('Failed to load state channels:', error);
+    }
+  }
+
+  /**
+   * Update $YELLOW token balance
+   */
+  private async updateYellowTokenBalance(): Promise<void> {
+    try {
+      if (!this.state.signer) return;
+
+      // In a real implementation, this would query the $YELLOW token contract
+      // For now, we'll use a mock balance
+      const mockBalance = '5000000000000000000000'; // 5000 $YELLOW
+      
+      this.updateState({ yellowTokenBalance: mockBalance });
+    } catch (error) {
+      console.error('Failed to update $YELLOW token balance:', error);
+    }
+  }
+
+  /**
+   * Open a new state channel
+   */
+  async openStateChannel(counterparty: string, collateral: string): Promise<StateChannel> {
+    if (!this.state.signer) {
+      throw new Error('Wallet not connected');
+    }
+
+    try {
+      const stateChannel = await yellowNetworkService.openStateChannel(counterparty, collateral);
+      
+      // Update local state
+      const updatedChannels = [...this.state.stateChannels, stateChannel];
+      this.updateState({ 
+        stateChannels: updatedChannels,
+        activeStateChannel: stateChannel,
+      });
+
+      return stateChannel;
+    } catch (error) {
+      throw new Error(`Failed to open state channel: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Close a state channel
+   */
+  async closeStateChannel(channelId: string): Promise<string> {
+    try {
+      const txHash = await yellowNetworkService.closeStateChannel(channelId);
+      
+      // Update local state
+      const updatedChannels = this.state.stateChannels.filter(channel => channel.id !== channelId);
+      const activeChannel = this.state.activeStateChannel?.id === channelId ? null : this.state.activeStateChannel;
+      
+      this.updateState({ 
+        stateChannels: updatedChannels,
+        activeStateChannel: activeChannel,
+      });
+
+      return txHash;
+    } catch (error) {
+      throw new Error(`Failed to close state channel: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get $YELLOW token balance
+   */
+  async getYellowTokenBalance(): Promise<string> {
+    await this.updateYellowTokenBalance();
+    return this.state.yellowTokenBalance;
+  }
+
+  /**
+   * Switch to Sepolia network
+   */
+  async switchToSepoliaNetwork(): Promise<void> {
     if (!this.isMetaMaskAvailable()) {
       throw new Error('MetaMask is not available. Please install MetaMask wallet.');
     }
@@ -322,7 +469,7 @@ export class WalletService {
     }
 
     try {
-      // Try to switch to Polygon Amoy network
+      // Try to switch to Sepolia network
       await provider.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: ETH_NETWORK_CONFIG.chainId }],
@@ -336,14 +483,13 @@ export class WalletService {
             params: [ETH_NETWORK_CONFIG],
           });
         } catch (addError) {
-          throw new Error('Failed to add Polygon Amoy to your wallet. Please add it manually.');
+          throw new Error('Failed to add Sepolia to your wallet. Please add it manually.');
         }
       } else {
-        throw new Error('Failed to switch to Polygon Amoy. Please switch manually.');
+        throw new Error('Failed to switch to Sepolia. Please switch manually.');
       }
     }
   }
-
 
   /**
    * Disconnect wallet
@@ -358,6 +504,10 @@ export class WalletService {
       this.cleanupListeners = null;
     }
 
+    // Disconnect from Yellow Network
+    yellowWebSocketService.disconnect();
+    yellowNetworkService.cleanup();
+
     this.updateState({
       isConnected: false,
       address: null,
@@ -367,6 +517,11 @@ export class WalletService {
       networkName: null,
       error: null,
       isLoading: false,
+      isYellowNetworkConnected: false,
+      stateChannels: [],
+      activeStateChannel: null,
+      yellowTokenBalance: '0',
+      isInitializingYellow: false,
     });
   }
 
@@ -416,43 +571,24 @@ export class WalletService {
   }
 
   /**
-   * Switch to Sepolia network
+   * Store connection information
    */
-  async switchToMainnet(): Promise<void> {
-    if (!window.ethereum) {
-      throw new Error('MetaMask not installed');
-    }
+  private storeConnection(address: string, chainId: string): void {
+    if (typeof window === 'undefined') return;
+    
+    localStorage.setItem('yellow_wallet_connection', JSON.stringify({
+      address,
+      chainId,
+      timestamp: Date.now()
+    }));
+  }
 
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x1' }], // 1 in hex (Ethereum Mainnet)
-      });
-    } catch (error: any) {
-      // If the chain doesn't exist, add it (though mainnet should always exist)
-      if (error.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: '0x1',
-              chainName: 'Ethereum Mainnet',
-              rpcUrls: ['https://ethereum.publicnode.com'],
-              nativeCurrency: {
-                name: 'Ethereum',
-                symbol: 'ETH',
-                decimals: 18,
-              },
-              blockExplorerUrls: ['https://etherscan.io'],
-            }],
-          });
-        } catch (addError) {
-          throw new Error('Failed to add Ethereum Mainnet network');
-        }
-      } else {
-        throw new Error('Failed to switch to Ethereum Mainnet network');
-      }
-    }
+  /**
+   * Clear stored connection
+   */
+  private clearStoredConnection(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('yellow_wallet_connection');
   }
 
   /**
@@ -518,13 +654,13 @@ export class WalletService {
       '97': 'BSC Testnet',
       '137': 'Polygon',
       '80001': 'Polygon Mumbai (Deprecated)',
-      '80002': 'Polygon Amoy',
+      '11155111': 'Sepolia',
       '43114': 'Avalanche',
       '250': 'Fantom',
       '42161': 'Arbitrum',
       '10': 'Optimism',
       '0x13881': 'Polygon Mumbai (Deprecated)',
-      '0x13882': 'Polygon Amoy',
+      '0xAA36A7': 'Sepolia',
     };
 
     return networkMap[chainId] || 'Unknown Network';
@@ -585,4 +721,4 @@ export class WalletService {
 }
 
 // Export singleton instance
-export const walletService = WalletService.getInstance(); 
+export const yellowWalletService = YellowWalletService.getInstance();

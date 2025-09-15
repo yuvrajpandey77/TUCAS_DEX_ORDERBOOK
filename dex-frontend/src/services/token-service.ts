@@ -225,6 +225,7 @@ export class TokenService {
       4: 'ETH',    // Rinkeby
       5: 'ETH',    // Goerli
       42: 'ETH',   // Kovan
+      11155111: 'ETH', // Sepolia
       56: 'BNB',   // BSC
       97: 'BNB',   // BSC Testnet
       137: 'MATIC', // Polygon

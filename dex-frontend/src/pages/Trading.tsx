@@ -4,8 +4,8 @@ import { useWallet } from '@/hooks/useWallet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { OrderForm } from '@/components/trading/order-form'
-import OrderBook from '@/components/OrderBook'
+import { YellowOrderForm } from '@/components/trading/yellow-order-form'
+import YellowOrderBook from '@/components/YellowOrderBook'
 import { UserBalance } from '@/components/trading/user-balance'
 import { UserOrders } from '@/components/trading/user-orders'
 import { WithdrawForm } from '@/components/trading/withdraw-form'
@@ -73,10 +73,10 @@ function TradingInterface() {
             {/* Title Section */}
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2 font-heading">
-                Advanced Trading
+                Trading Terminal
               </h1>
               <p className="text-muted-foreground text-lg">
-                Professional trading interface with real-time order book data
+                Complete trading interface with market orders, limit orders, and portfolio management
               </p>
             </div>
 
@@ -150,11 +150,20 @@ function TradingInterface() {
                       <TrendingUp className="w-5 h-5" />
                       Buy Orders
                     </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Market orders for immediate execution, limit orders for precise pricing
+                    </p>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      <OrderForm orderType="limit" side="buy" />
-                      <OrderForm orderType="market" side="buy" />
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">Market Order (Instant)</h4>
+                        <YellowOrderForm orderType="market" side="buy" tradingPair="ETH/USDC" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">Limit Order (Precise)</h4>
+                        <YellowOrderForm orderType="limit" side="buy" tradingPair="ETH/USDC" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -166,11 +175,20 @@ function TradingInterface() {
                       <TrendingDown className="w-5 h-5" />
                       Sell Orders
                     </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Market orders for immediate execution, limit orders for precise pricing
+                    </p>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      <OrderForm orderType="limit" side="sell" />
-                      <OrderForm orderType="market" side="sell" />
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">Market Order (Instant)</h4>
+                        <YellowOrderForm orderType="market" side="sell" tradingPair="ETH/USDC" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">Limit Order (Precise)</h4>
+                        <YellowOrderForm orderType="limit" side="sell" tradingPair="ETH/USDC" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -187,7 +205,7 @@ function TradingInterface() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <OrderBook />
+                    <YellowOrderBook selectedPair="ETH/USDC" />
                   </CardContent>
                 </Card>
 

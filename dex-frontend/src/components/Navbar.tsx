@@ -5,10 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { useDEXStore } from '@/store/dex-store';
 import { formatAddress, formatTokenAmount } from '@/lib/utils';
 import { Wallet, Menu, X, AlertCircle, CheckCircle, ChevronDown, ChevronUp, Coins, RefreshCw, Loader2 } from 'lucide-react';
-import ConnectWallet from './ConnectWallet';
 import WalletDebugInfo from './WalletDebugInfo';
-import { useWallet } from '@/hooks/useWallet';
-import { walletService } from '@/services/wallet-service';
+import { useSimplifiedWallet } from '@/hooks/useSimplifiedWallet';
+import { simplifiedWalletService } from '@/services/simplified-wallet-service';
+import { UNISWAP_V3_CONFIG } from '@/config/uniswap-v3';
 
 interface TokenBalance {
   address: string;
@@ -27,7 +27,6 @@ interface BalanceLoadingState {
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isConnectWalletOpen, setIsConnectWalletOpen] = useState(false);
   const [isDebugModalOpen, setIsDebugModalOpen] = useState(false);
   const [isTokenDropdownOpen, setIsTokenDropdownOpen] = useState(false);
   const [_, setUserBalances] = useState<{ [key: string]: string }>({});
@@ -42,67 +41,47 @@ const Navbar = () => {
   const { selectedPair } = useDEXStore();
   const [networkStatus, setNetworkStatus] = useState<'checking' | 'connected' | 'wrong-network' | 'error'>('checking');
   
-  // Use the new wallet hook for enhanced functionality
+  // Use the simplified wallet hook
   const {
     isConnected,
     address: account,
-    // nativeBalance,
-    // tokenBalances: newTokenBalances,
-    fetchAllBalances,
-    disconnectWallet,
-    // error: walletError,
-    // clearError: clearWalletError,
+    chainId,
     isLoading,
-    isAutoReconnecting,
-  } = useWallet();
+    isOnCorrectNetwork,
+    switchToMainnet,
+    connect,
+    disconnect,
+  } = useSimplifiedWallet();
   
   const location = useLocation();
   const tokenDropdownRef = useRef<HTMLDivElement>(null);
   
   // Avoid brief button swap flashes during route changes or wallet rehydration
   const shouldShowDisconnectButton = isConnected;
-  const shouldShowConnectButton = !isConnected && !isLoading && !isAutoReconnecting;
+  const shouldShowConnectButton = !isConnected && !isLoading;
 
-  // Check network status (Polygon Amoy)
+  // Update network status based on simplified wallet state
   React.useEffect(() => {
-    const provider = walletService.getProvider();
-    if (!isConnected || !provider) {
+    if (!isConnected) {
       setNetworkStatus('checking');
       return;
     }
 
-    const checkNetwork = async () => {
-      try {
-        const network = await provider.getNetwork();
-        const chainId = network.chainId.toString();
-        if (chainId === '80002' || chainId === '0x13882') {
-          setNetworkStatus('connected');
-        } else {
-          setNetworkStatus('wrong-network');
-        }
-      } catch (error) {
-        console.error('Network check failed:', error);
-        setNetworkStatus('error');
-      }
-    };
-
-    checkNetwork();
-
-    const eth = (window as any).ethereum;
-    const handleChainChanged = () => checkNetwork();
-    if (eth && eth.on) eth.on('chainChanged', handleChainChanged);
-    return () => {
-      if (eth && eth.removeListener) eth.removeListener('chainChanged', handleChainChanged);
-    };
-  }, [isConnected]);
+    if (isOnCorrectNetwork) {
+      setNetworkStatus('connected');
+    } else {
+      setNetworkStatus('wrong-network');
+    }
+  }, [isConnected, isOnCorrectNetwork]);
 
   // Fetch all user balances when connected
   useEffect(() => {
     const fetchAllUserBalances = async () => {
       if (!account) return;
       
-      const signer = walletService.getSigner();
-      if (!signer) return;
+      // Get signer from simplified wallet service
+      const walletState = simplifiedWalletService.getState();
+      if (!walletState.signer) return;
 
       try {
         setBalanceLoadingState(prev => ({
@@ -115,7 +94,26 @@ const Navbar = () => {
         // Use the new wallet service for fetching balances
         if (account) {
           try {
-            const allBalances = await fetchAllBalances([], account);
+            // Fetch real balances
+            const [ethBalance, usdcBalance] = await Promise.all([
+              simplifiedWalletService.getNativeBalance(account),
+              simplifiedWalletService.getTokenBalance(UNISWAP_V3_CONFIG.USDC_ADDRESS, account)
+            ]);
+            
+            const allBalances = {
+              native: {
+                symbol: 'ETH',
+                balance: ethBalance
+              },
+              tokens: [
+                {
+                  address: UNISWAP_V3_CONFIG.USDC_ADDRESS,
+                  symbol: 'USDC',
+                  balance: usdcBalance,
+                  decimals: 6
+                }
+              ]
+            };
             
             // Convert to the old format for backward compatibility
             const balances: TokenBalance[] = [];
@@ -132,7 +130,7 @@ const Navbar = () => {
             }
             
             // Add token balances
-            allBalances.tokens.forEach(token => {
+            allBalances.tokens.forEach((token: any) => {
               balances.push({
                 address: token.address || '',
                 symbol: token.symbol,
@@ -178,10 +176,24 @@ const Navbar = () => {
         setTokenBalances([
           {
             address: '0x0000000000000000000000000000000000000000',
-            symbol: 'MATIC',
-            balance: '1000000000000000000000', // 1000 MATIC
+            symbol: 'ETH',
+            balance: '5000000000000000000', // 5 ETH
             decimals: 18,
             isNative: true
+          },
+          {
+            address: '0x779877A7B0D9E8603169DdbD7836e478b4624789', // USDC on Sepolia
+            symbol: 'USDC',
+            balance: '1000000000', // 1000 USDC (6 decimals)
+            decimals: 6,
+            isNative: false
+          },
+          {
+            address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // UNI on Sepolia
+            symbol: 'UNI',
+            balance: '100000000000000000000', // 100 UNI
+            decimals: 18,
+            isNative: false
           }
         ]);
       }
@@ -190,7 +202,7 @@ const Navbar = () => {
     if (isConnected && account) {
       fetchAllUserBalances();
     }
-  }, [isConnected, account, selectedPair, fetchAllBalances]);
+  }, [isConnected, account, selectedPair]);
 
   const getNetworkStatusIcon = () => {
     switch (networkStatus) {
@@ -208,7 +220,7 @@ const Navbar = () => {
   const getNetworkStatusText = () => {
     switch (networkStatus) {
       case 'connected':
-        return 'Polygon Amoy';
+        return 'Sepolia';
       case 'wrong-network':
         return 'Wrong Network';
       case 'error':
@@ -242,8 +254,9 @@ const Navbar = () => {
   const refreshBalances = async () => {
     if (!isConnected || !account) return;
     
-    const signer = walletService.getSigner();
-    if (!signer) return;
+    // Get signer from simplified wallet service
+    const walletState = simplifiedWalletService.getState();
+    if (!walletState.signer) return;
     
     try {
       setBalanceLoadingState(prev => ({
@@ -254,7 +267,26 @@ const Navbar = () => {
       
       // Use the new wallet service to refresh balances
       if (account) {
-        const allBalances = await fetchAllBalances([], account);
+        // Fetch real balances
+        const [ethBalance, usdcBalance] = await Promise.all([
+          simplifiedWalletService.getNativeBalance(account),
+          simplifiedWalletService.getTokenBalance(UNISWAP_V3_CONFIG.USDC_ADDRESS, account)
+        ]);
+        
+        const allBalances = {
+          native: {
+            symbol: 'ETH',
+            balance: ethBalance
+          },
+          tokens: [
+            {
+              address: UNISWAP_V3_CONFIG.USDC_ADDRESS,
+              symbol: 'USDC',
+              balance: usdcBalance,
+              decimals: 6
+            }
+          ]
+        };
         
         // Convert to the old format for backward compatibility
         const balances: TokenBalance[] = [];
@@ -271,7 +303,7 @@ const Navbar = () => {
         }
         
         // Add token balances
-        allBalances.tokens.forEach(token => {
+        allBalances.tokens.forEach((token: any) => {
           balances.push({
             address: token.address || '',
             symbol: token.symbol,
@@ -322,9 +354,9 @@ const Navbar = () => {
       return { symbol: firstToken.symbol, balance: firstToken.balance };
     }
     
-    // Default to MATIC for Polygon network, or ETH for other networks
-    const currentChainId = walletService.getState().chainId;
-    const defaultSymbol = currentChainId === '80002' || currentChainId === '0x13882' ? 'MATIC' : 'ETH';
+    // Default to ETH for Ethereum mainnet, or ETH for other networks
+    const currentChainId = chainId;
+    const defaultSymbol = currentChainId === '1' || currentChainId === '0x1' ? 'ETH' : 'ETH';
     return { symbol: defaultSymbol, balance: '0' };
   };
 
@@ -343,14 +375,15 @@ const Navbar = () => {
     <div className="flex items-center space-x-2 text-destructive">
       <AlertCircle className="h-4 w-4" />
       <span className="text-xs">{error}</span>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onRetry}
-        className="h-4 w-4 p-0 hover:bg-destructive/10"
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          onRetry();
+        }}
+        className="h-4 w-4 p-0 hover:bg-destructive/10 cursor-pointer rounded flex items-center justify-center"
       >
         <RefreshCw className="h-3 w-3" />
-      </Button>
+      </div>
     </div>
   );
 
@@ -470,26 +503,26 @@ const Navbar = () => {
                 </button>
 
                 {/* Network status below balance toggle */}
-                {/* <div className="mt-1 h-5 flex items-center space-x-2 text-xs text-muted-foreground">
+                <div className="mt-1 h-5 flex items-center space-x-2 text-xs text-muted-foreground">
                   <div>{getNetworkStatusIcon()}</div>
                   <span>{getNetworkStatusText()}</span>
-                  {networkStatus === 'wrong-network' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          await walletService.switchToPolygonNetwork();
-                        } catch (e) {
-                          console.error('Failed to switch network', e);
-                        }
-                      }}
-                      className="h-6 px-2"
-                    >
-                      Switch
-                    </Button>
-                  )}
-                </div> */}
+            {networkStatus === 'wrong-network' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await switchToMainnet();
+                  } catch (e) {
+                    console.error('Failed to switch network', e);
+                  }
+                }}
+                className="h-6 px-2"
+              >
+                Switch to Mainnet
+              </Button>
+            )}
+                </div>
                 
                 {isTokenDropdownOpen && (
                   <div className="absolute top-full right-0 mt-2 w-80 bg-background/80 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl shadow-black/10 py-3 z-50 animate-in slide-in-from-top-2 duration-300">
@@ -567,7 +600,7 @@ const Navbar = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={disconnectWallet}
+                  onClick={disconnect}
                   className="border-border/20 transition-all duration-300 ease-in-out transform hover:scale-105 w-[120px]"
                 >
                   Disconnect
@@ -578,8 +611,12 @@ const Navbar = () => {
                 <Button 
                   variant="default" 
                   size="sm" 
-                  onClick={() => {
-                    setIsConnectWalletOpen(true);
+                  onClick={async () => {
+                    try {
+                      await connect();
+                    } catch (error) {
+                      console.error('Connection failed:', error);
+                    }
                   }}
                   disabled={isLoading}
                   className="transition-all duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 w-[120px]"
@@ -742,7 +779,7 @@ const Navbar = () => {
                     variant="outline" 
                     className="w-full" 
                     size="sm" 
-                    onClick={disconnectWallet}
+                    onClick={disconnect}
                   >
                     Disconnect
                   </Button>
@@ -754,17 +791,16 @@ const Navbar = () => {
                     variant="default" 
                     className="w-full" 
                     size="sm" 
-                    onClick={() => {
-                      setIsConnectWalletOpen(true);
+                    onClick={async () => {
+                      try {
+                        await connect();
+                      } catch (error) {
+                        console.error('Connection failed:', error);
+                      }
                     }}
-                    disabled={isLoading || isAutoReconnecting}
+                    disabled={isLoading}
                   >
-                    {isAutoReconnecting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Reconnecting...
-                      </>
-                    ) : isLoading ? (
+                    {isLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Connecting...
@@ -784,11 +820,6 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Connect Wallet Modal */}
-      <ConnectWallet 
-        isOpen={isConnectWalletOpen} 
-        onClose={() => setIsConnectWalletOpen(false)} 
-      />
 
       {/* Wallet Debug Modal */}
       <WalletDebugInfo 

@@ -1,61 +1,55 @@
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
-import LimitOrderCard from '@/components/LimitOrderCard';
-import OrderBook from '@/components/OrderBook';
-import UserOrders from '@/components/UserOrders';
-import DebugPanel from '@/components/DebugPanel';
-import ContractStatus from '@/components/ContractStatus';
-import TradingPairSelector from '@/components/TradingPairSelector';
-
-import SecurityAudit from '@/components/SecurityAudit';
-import FloatingOrbs from '@/components/FloatingOrbs';
-import { useDEXStore } from '@/store/dex-store';
-import { useMarketData } from '@/hooks/use-market-data';
-import { useRealTimePrice } from '@/hooks/use-real-time-price';
+import { YellowOrderForm } from '@/components/trading/yellow-order-form';
+import YellowOrderBook from '@/components/YellowOrderBook';
+import CandlestickChart from '@/components/CandlestickChart';
+import { useYellowNetwork } from '@/components/YellowNetworkProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Activity, Clock, DollarSign, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TrendingUp, TrendingDown, Activity, Zap, BarChart3, Clock, Target, Settings, Calculator } from 'lucide-react';
 
 const Limit = () => {
-  const { selectedPair, setSelectedPair, tradingPairs } = useDEXStore();
-  const { marketData, isLoading: marketDataLoading } = useMarketData();
-  const { 
-    currentPrice, 
-    priceStats, 
-    getPriceChangeDirection, 
-    getFormattedPriceChange,
-    getMarketSentiment,
-    isPriceAtExtreme 
-  } = useRealTimePrice();
+  const [selectedPair] = useState('ETH/USDC');
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [priceChange, setPriceChange] = useState<number>(0);
+  const [volume24h, setVolume24h] = useState<string>('0');
+  const [showChart, setShowChart] = useState(true);
+  const [timeframe, setTimeframe] = useState('1h');
+  const [activeTab, setActiveTab] = useState('basic');
+  const { isConnected, error } = useYellowNetwork();
 
-  // Initialize trading pair if not selected
+  // Mock data initialization
   useEffect(() => {
-    if (tradingPairs.length > 0 && !selectedPair) {
-      setSelectedPair(tradingPairs[0]);
-    }
-  }, [selectedPair, setSelectedPair, tradingPairs]);
+    // Simulate real-time price updates
+    const interval = setInterval(() => {
+      const basePrice = 2000 + (Math.random() - 0.5) * 100;
+      setCurrentPrice(basePrice);
+      setPriceChange((Math.random() - 0.5) * 10);
+      setVolume24h((Math.random() * 1000000).toLocaleString());
+    }, 2000);
 
-  // Add console log to verify page is loading
-  useEffect(() => {
-  }, [selectedPair]);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Floating Background Orbs */}
-      <FloatingOrbs />
-      
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
       <Navbar />
       
       {/* Main Content */}
-      <main className="relative z-10 container mx-auto px-4 pt-20 pb-6">
+      <main className="container mx-auto px-4 pt-20 pb-6">
         {/* Header Section */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-foreground mb-1 font-heading">Limit Trading</h1>
-              <p className="text-sm text-muted-foreground">
-                Place limit orders with precise price control
+              <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+                <Target className="h-8 w-8 text-primary" />
+                Limit Orders
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Advanced limit order trading with precise price control and execution strategies
               </p>
             </div>
             <div className="flex items-center space-x-3">
@@ -63,258 +57,287 @@ const Limit = () => {
                 <Activity className="h-3 w-3 mr-1" />
                 Live Trading
               </Badge>
-              {selectedPair && (
-                <Badge variant="outline" className="text-xs">
-                  {selectedPair.baseTokenSymbol}/{selectedPair.quoteTokenSymbol}
-                </Badge>
-              )}
+              <Badge variant="outline" className="text-xs">
+                {selectedPair}
+              </Badge>
+              <div className={`flex items-center gap-2 text-xs ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span>Yellow Network: {isConnected ? 'Connected' : 'Disconnected'}</span>
+              </div>
             </div>
+          </div>
+
+          {/* Limit Order Features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card className="border border-blue-500/20 bg-blue-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <Target className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Precise Pricing</p>
+                    <p className="text-xs text-muted-foreground">Set exact entry/exit prices</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-green-500/20 bg-green-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                    <Clock className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Time Control</p>
+                    <p className="text-xs text-muted-foreground">Set order expiration times</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-purple-500/20 bg-purple-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <Settings className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Advanced Options</p>
+                    <p className="text-xs text-muted-foreground">Stop-loss, take-profit, OCO orders</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
         {/* Market Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-          <Card className="card-glass border-border/20">
-            <CardContent className="p-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card className="border border-border/20">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Last Price</p>
-                  {currentPrice ? (
-                    <div className="flex items-center space-x-2">
-                      <p className={`text-lg font-bold ${currentPrice.isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                        ${currentPrice.price}
-                      </p>
-                      {isPriceAtExtreme() && (
-                        <Badge variant="destructive" className="text-xs">EXTREME</Badge>
-                      )}
-                    </div>
-                  ) : marketDataLoading ? (
-                    <div className="h-6 bg-muted animate-pulse rounded"></div>
-                  ) : (
-                    <p className="text-lg font-bold text-green-400">${marketData.lastPrice}</p>
-                  )}
-                </div>
-                {currentPrice ? (
-                  getPriceChangeDirection() === 'up' ? (
-                    <TrendingUp className="h-4 w-4 text-green-400" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-400" />
-                  )
-                ) : (
-                  <TrendingUp className="h-4 w-4 text-green-400" />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="card-glass border-border/20">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">24h Change</p>
-                  {currentPrice ? (
-                    <div className="flex items-center space-x-2">
-                      <p className={`text-lg font-bold ${currentPrice.isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                        {getFormattedPriceChange().percent}
-                      </p>
-                      <Badge 
-                        variant={getMarketSentiment() === 'bullish' ? 'default' : 'secondary'} 
-                        className="text-xs"
-                      >
-                        {getMarketSentiment().toUpperCase()}
-                      </Badge>
-                    </div>
-                  ) : marketDataLoading ? (
-                    <div className="h-6 bg-muted animate-pulse rounded"></div>
-                  ) : (
-                    <p className={`text-lg font-bold ${marketData.isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                      {marketData.priceChangePercent24h}%
+                  <p className="text-sm text-muted-foreground">Last Price</p>
+                  <div className="flex items-center space-x-2">
+                    <p className={`text-2xl font-bold ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      ${currentPrice?.toFixed(2) || '0.00'}
                     </p>
-                  )}
+                    {priceChange !== 0 && (
+                      priceChange >= 0 ? (
+                        <TrendingUp className="h-5 w-5 text-green-400" />
+                      ) : (
+                        <TrendingDown className="h-5 w-5 text-red-400" />
+                      )
+                    )}
+                  </div>
                 </div>
-                {currentPrice ? (
-                  getPriceChangeDirection() === 'up' ? (
-                    <TrendingUp className="h-4 w-4 text-green-400" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-400" />
-                  )
-                ) : marketDataLoading ? (
-                  <div className="h-4 w-4 bg-muted animate-pulse rounded"></div>
-                ) : (
-                  marketData.isPositive ? (
-                    <TrendingUp className="h-4 w-4 text-green-400" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-400" />
-                  )
-                )}
               </div>
             </CardContent>
           </Card>
           
-          <Card className="card-glass border-border/20">
-            <CardContent className="p-3">
+          <Card className="border border-border/20">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">24h Volume</p>
-                  {currentPrice ? (
-                    <p className="text-lg font-bold text-foreground">${currentPrice.volume24h}</p>
-                  ) : marketDataLoading ? (
-                    <div className="h-6 bg-muted animate-pulse rounded"></div>
-                  ) : (
-                    <p className="text-lg font-bold text-foreground">${marketData.volume24h}</p>
-                  )}
+                  <p className="text-sm text-muted-foreground">24h Change</p>
+                  <p className={`text-2xl font-bold ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                  </p>
                 </div>
-                <BarChart3 className="h-4 w-4 text-blue-400" />
               </div>
             </CardContent>
           </Card>
           
-          <Card className="card-glass border-border/20">
-            <CardContent className="p-3">
+          <Card className="border border-border/20">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Active Orders</p>
-                  {marketDataLoading ? (
-                    <div className="h-6 bg-muted animate-pulse rounded"></div>
-                  ) : (
-                    <p className="text-lg font-bold text-foreground">{marketData.activeOrders}</p>
-                  )}
-                </div>
-                <Clock className="h-4 w-4 text-purple-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Trading Interface - Compact Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          
-          {/* Left Column - Compact Trading Interface (3 columns) */}
-          <div className="lg:col-span-3 space-y-4">
-            {/* Contract Status - Compact */}
-            <div className="h-100">
-              <ContractStatus />
-            </div>
-            
-            {/* Trading Pair Selector - With all sections */}
-            <div className="h-100 ">
-              <TradingPairSelector />
-            </div>
-            
-            {/* Security Audit - Below Trading Pair Selector */}
-            <div className="h-32">
-              <SecurityAudit />
-            </div>
-          </div>
-
-          {/* Center Column - Limit Order (5 columns) */}
-          <div className="lg:col-span-5">
-            <LimitOrderCard />
-          </div>
-
-          {/* Right Column - Order Book (4 columns) */}
-          <div className="lg:col-span-4">
-            <OrderBook />
-          </div>
-        </div>
-
-        {/* Bottom Section - User Orders Full Width */}
-        <div className="mt-6">
-          {/* User Orders - Full Width */}
-          <div className="w-full">
-            <UserOrders />
-          </div>
-        </div>
-
-        {/* Additional Security Section */}
-        <div className="mt-6">
-          <DebugPanel />
-        </div>
-
-        {/* Trading Statistics & Market Depth */}
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Trading Statistics */}
-          <Card className="card-glass border-border/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold text-foreground flex items-center">
-                <DollarSign className="h-4 w-4 mr-2 text-green-400" />
-                Trading Statistics
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-2 bg-accent/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Total Trades</p>
-                  <p className="text-sm font-semibold text-foreground">1,234</p>
-                </div>
-                <div className="p-2 bg-accent/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Success Rate</p>
-                  <p className="text-sm font-semibold text-green-400">98.5%</p>
-                </div>
-                <div className="p-2 bg-accent/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Avg Fill Time</p>
-                  <p className="text-sm font-semibold text-foreground">2.3s</p>
-                </div>
-                <div className="p-2 bg-accent/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Min Order Size</p>
-                  <p className="text-sm font-semibold text-foreground">0.001</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Market Depth Chart Placeholder */}
-          <Card className="card-glass border-border/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold text-foreground flex items-center">
-                <BarChart3 className="h-4 w-4 mr-2 text-blue-400" />
-                Market Depth
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-32 bg-accent/20 rounded-lg flex items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">Market depth chart</p>
-                  <p className="text-xs">Coming soon</p>
+                  <p className="text-sm text-muted-foreground">24h Volume</p>
+                  <p className="text-2xl font-bold text-foreground">${volume24h}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Footer Information */}
-        <div className="mt-6 p-4 bg-accent/20 rounded-lg border border-border/20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">Trading Features</h3>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>• Limit orders with precise price control</li>
-                <li>• Real-time order book updates</li>
-                <li>• Order cancellation and management</li>
-                <li>• Secure wallet integration</li>
-              </ul>
+        {/* Chart Section */}
+        {showChart && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Market Chart
+              </h2>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  {['15m', '1h', '4h', '1d'].map((tf) => (
+                    <Button
+                      key={tf}
+                      variant={timeframe === tf ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setTimeframe(tf)}
+                      className="h-8 px-3 text-xs"
+                    >
+                      {tf}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChart(!showChart)}
+                  className="h-8 w-8 p-0"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">Security</h3>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>• Smart contract audited</li>
-                <li>• Non-custodial trading</li>
-                <li>• Transparent order matching</li>
-                <li>• Gas fee optimization</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">Support</h3>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>• 24/7 trading availability</li>
-                <li>• Real-time market data</li>
-                <li>• Advanced order types</li>
-                <li>• Professional trading tools</li>
-              </ul>
-            </div>
+            <CandlestickChart 
+              pair={selectedPair} 
+              timeframe={timeframe}
+              height={400}
+            />
+          </div>
+        )}
+
+        {/* Main Trading Interface */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Limit Order Strategies */}
+          <div className="lg:col-span-2">
+            <Card className="bg-background/20 backdrop-blur-xl border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  Limit Order Strategies
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
+                    <TabsTrigger value="basic" className="flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Basic Limit
+                    </TabsTrigger>
+                    <TabsTrigger value="advanced" className="flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Advanced
+                    </TabsTrigger>
+                    <TabsTrigger value="bracket" className="flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Bracket Orders
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="basic" className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Buy Limit Order */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                          <TrendingUp className="h-5 w-5 text-green-400" />
+                          Buy Limit Order
+                        </h3>
+                        <YellowOrderForm 
+                          orderType="limit" 
+                          side="buy" 
+                          tradingPair={selectedPair} 
+                        />
+                      </div>
+
+                      {/* Sell Limit Order */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                          <TrendingDown className="h-5 w-5 text-red-400" />
+                          Sell Limit Order
+                        </h3>
+                        <YellowOrderForm 
+                          orderType="limit" 
+                          side="sell" 
+                          tradingPair={selectedPair} 
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="advanced" className="space-y-6">
+                    <div className="text-center py-8">
+                      <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-foreground mb-2">Advanced Limit Orders</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Stop-limit orders, trailing stops, and conditional orders coming soon
+                      </p>
+                      <Badge variant="outline">Coming Soon</Badge>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="bracket" className="space-y-6">
+                    <div className="text-center py-8">
+                      <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-foreground mb-2">Bracket Orders</h3>
+                      <p className="text-muted-foreground mb-4">
+                        OCO (One-Cancels-Other) and bracket order strategies coming soon
+                      </p>
+                      <Badge variant="outline">Coming Soon</Badge>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Order Book & Market Data */}
+          <div className="space-y-6">
+            {/* Order Book */}
+            <Card className="bg-background/20 backdrop-blur-xl border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Order Book
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <YellowOrderBook selectedPair={selectedPair} />
+              </CardContent>
+            </Card>
+
+            {/* Market Data */}
+            <Card className="bg-background/20 backdrop-blur-xl border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  Market Data
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Last Price</span>
+                  <span className={`font-mono font-semibold ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    ${currentPrice?.toFixed(2) || '0.00'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">24h Change</span>
+                  <span className={`font-mono font-semibold ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">24h Volume</span>
+                  <span className="font-mono font-semibold text-foreground">${volume24h}</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <p className="text-sm text-red-400 font-medium">❌ Yellow Network Error</p>
+            <p className="text-xs text-red-300 mt-1">{error}</p>
+          </div>
+        )}
       </main>
     </div>
   );

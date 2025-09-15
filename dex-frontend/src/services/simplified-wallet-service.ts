@@ -1,5 +1,4 @@
-import { BrowserProvider, JsonRpcSigner } from 'ethers';
-import { ETH_NETWORK_CONFIG } from '@/config/network';
+import { BrowserProvider, JsonRpcSigner, ethers } from 'ethers';
 
 // Extend the Window interface to include MetaMask
 declare global {
@@ -30,13 +29,7 @@ export interface WalletState {
   isLoading: boolean;
 }
 
-export interface WalletError {
-  code: string;
-  message: string;
-  userMessage: string;
-}
-
-export class WalletService {
+export class SimplifiedWalletService {
   private state: WalletState = {
     isConnected: false,
     address: null,
@@ -52,17 +45,17 @@ export class WalletService {
   private cleanupListeners: (() => void) | null = null;
 
   // Singleton pattern
-  private static instance: WalletService;
+  private static instance: SimplifiedWalletService;
   
-  public static getInstance(): WalletService {
-    if (!WalletService.instance) {
-      WalletService.instance = new WalletService();
+  public static getInstance(): SimplifiedWalletService {
+    if (!SimplifiedWalletService.instance) {
+      SimplifiedWalletService.instance = new SimplifiedWalletService();
     }
-    return WalletService.instance;
+    return SimplifiedWalletService.instance;
   }
 
   constructor() {
-    // Auto-reconnect on page load if wallet was previously connected
+    // Auto-reconnect on page load
     this.autoReconnect();
   }
 
@@ -111,7 +104,7 @@ export class WalletService {
   }
 
   /**
-   * Get MetaMask provider explicitly
+   * Get MetaMask provider
    */
   private getMetaMaskProvider(): any {
     if (typeof window === 'undefined' || !window.ethereum) return null;
@@ -127,6 +120,19 @@ export class WalletService {
     }
     
     return null;
+  }
+
+  /**
+   * Get network name from chain ID
+   */
+  private getNetworkName(chainId: string): string {
+    const networks: Record<string, string> = {
+      '1': 'Ethereum Mainnet',
+      '11155111': 'Sepolia Testnet',
+      '137': 'Polygon',
+      '80002': 'Polygon Amoy',
+    };
+    return networks[chainId] || `Chain ${chainId}`;
   }
 
   /**
@@ -199,7 +205,6 @@ export class WalletService {
 
       // Set up event listeners
       this.setupEventListeners();
-
 
     } catch (error) {
       this.clearStoredConnection();
@@ -283,17 +288,10 @@ export class WalletService {
       // Set up event listeners
       this.setupEventListeners();
 
-      // Try to switch to Polygon Amoy
-      try {
-        await this.switchToPolygonNetwork();
-      } catch (switchError) {
-        // Don't fail the connection if network switch fails
-      }
-
       return address;
 
     } catch (error) {
-      const walletError = this.handleError(error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect wallet';
       this.updateState({
         isConnected: false,
         address: null,
@@ -302,48 +300,56 @@ export class WalletService {
         chainId: null,
         networkName: null,
         isLoading: false,
-        error: walletError.userMessage,
+        error: errorMessage,
       });
-      throw walletError;
+      throw new Error(errorMessage);
     }
   }
 
   /**
-   * Switch to Polygon Amoy network
+   * Switch to Ethereum Mainnet
    */
-  async switchToPolygonNetwork(): Promise<void> {
+  async switchToMainnet(): Promise<void> {
     if (!this.isMetaMaskAvailable()) {
-      throw new Error('MetaMask is not available. Please install MetaMask wallet.');
+      throw new Error('MetaMask is not installed');
     }
 
     const provider = this.getMetaMaskProvider();
     if (!provider) {
-      throw new Error('MetaMask is not available.');
+      throw new Error('MetaMask is not available');
     }
 
     try {
-      // Try to switch to Polygon Amoy network
       await provider.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: ETH_NETWORK_CONFIG.chainId }],
+        params: [{ chainId: '0x1' }], // 1 in hex (Ethereum Mainnet)
       });
-    } catch (switchError: any) {
-      // If the network doesn't exist, add it
-      if (switchError.code === 4902) {
+    } catch (error: any) {
+      // If the chain doesn't exist, add it (though mainnet should always exist)
+      if (error.code === 4902) {
         try {
           await provider.request({
             method: 'wallet_addEthereumChain',
-            params: [ETH_NETWORK_CONFIG],
+            params: [{
+              chainId: '0x1',
+              chainName: 'Ethereum Mainnet',
+              rpcUrls: ['https://ethereum.publicnode.com'],
+              nativeCurrency: {
+                name: 'Ethereum',
+                symbol: 'ETH',
+                decimals: 18,
+              },
+              blockExplorerUrls: ['https://etherscan.io'],
+            }],
           });
         } catch (addError) {
-          throw new Error('Failed to add Polygon Amoy to your wallet. Please add it manually.');
+          throw new Error('Failed to add Ethereum Mainnet network');
         }
       } else {
-        throw new Error('Failed to switch to Polygon Amoy. Please switch manually.');
+        throw new Error('Failed to switch to Ethereum Mainnet network');
       }
     }
   }
-
 
   /**
    * Disconnect wallet
@@ -402,56 +408,18 @@ export class WalletService {
   }
 
   /**
-   * Get provider
+   * Get current chain ID
    */
-  getProvider(): BrowserProvider | null {
-    return this.state.provider;
-  }
-
-  /**
-   * Get signer
-   */
-  getSigner(): JsonRpcSigner | null {
-    return this.state.signer;
-  }
-
-  /**
-   * Switch to Sepolia network
-   */
-  async switchToMainnet(): Promise<void> {
-    if (!window.ethereum) {
-      throw new Error('MetaMask not installed');
+  async getChainId(): Promise<string | null> {
+    if (!this.state.isConnected || !this.state.provider) {
+      return null;
     }
 
     try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x1' }], // 1 in hex (Ethereum Mainnet)
-      });
-    } catch (error: any) {
-      // If the chain doesn't exist, add it (though mainnet should always exist)
-      if (error.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: '0x1',
-              chainName: 'Ethereum Mainnet',
-              rpcUrls: ['https://ethereum.publicnode.com'],
-              nativeCurrency: {
-                name: 'Ethereum',
-                symbol: 'ETH',
-                decimals: 18,
-              },
-              blockExplorerUrls: ['https://etherscan.io'],
-            }],
-          });
-        } catch (addError) {
-          throw new Error('Failed to add Ethereum Mainnet network');
-        }
-      } else {
-        throw new Error('Failed to switch to Ethereum Mainnet network');
-      }
+      const network = await this.state.provider.getNetwork();
+      return network.chainId.toString();
+    } catch {
+      return null;
     }
   }
 
@@ -459,130 +427,125 @@ export class WalletService {
    * Setup event listeners for wallet changes
    */
   private setupEventListeners(): void {
-    if (!window.ethereum) return;
+    if (typeof window === 'undefined' || !window.ethereum) return;
 
-    const handleAccountsChanged = (...args: unknown[]) => {
-      const accounts = args[0] as string[];
+    const provider = this.getMetaMaskProvider();
+    if (!provider) return;
+
+    // Handle account changes
+    const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
         // User disconnected
         this.disconnect();
-      } else if (accounts[0] !== this.state.address) {
-        // Account changed
+      } else {
+        // User switched accounts
         const newAddress = accounts[0];
         this.updateState({ address: newAddress });
-        this.storeConnection(newAddress, this.state.chainId || '');
+        this.storeConnection(newAddress, this.state.chainId || '1');
       }
     };
 
-    const handleChainChanged = (...args: unknown[]) => {
-      const chainId = args[0] as string;
+    // Handle chain changes
+    const handleChainChanged = (chainId: string) => {
+      const networkName = this.getNetworkName(chainId);
       this.updateState({ 
-        chainId,
-        networkName: this.getNetworkName(chainId),
+        chainId, 
+        networkName 
       });
-      // Update stored connection with new chain ID
-      if (this.state.address) {
-        this.storeConnection(this.state.address, chainId);
-      }
+      this.storeConnection(this.state.address || '', chainId);
     };
 
+    // Handle disconnect
     const handleDisconnect = () => {
       this.disconnect();
     };
 
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-    window.ethereum.on('chainChanged', handleChainChanged);
-    window.ethereum.on('disconnect', handleDisconnect);
+    // Add event listeners
+    provider.on('accountsChanged', handleAccountsChanged);
+    provider.on('chainChanged', handleChainChanged);
+    provider.on('disconnect', handleDisconnect);
 
     // Store cleanup function
     this.cleanupListeners = () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
-        window.ethereum.removeListener('disconnect', handleDisconnect);
-      }
+      provider.removeListener('accountsChanged', handleAccountsChanged);
+      provider.removeListener('chainChanged', handleChainChanged);
+      provider.removeListener('disconnect', handleDisconnect);
     };
   }
 
   /**
-   * Get network name from chain ID
+   * Reconnect wallet (useful for retry scenarios)
    */
-  private getNetworkName(chainId: string): string {
-    const networkMap: { [key: string]: string } = {
-      '1': 'Ethereum Mainnet',
-      '3': 'Ropsten',
-      '4': 'Rinkeby',
-      '5': 'Goerli',
-      '42': 'Kovan',
-      '56': 'BSC',
-      '97': 'BSC Testnet',
-      '137': 'Polygon',
-      '80001': 'Polygon Mumbai (Deprecated)',
-      '80002': 'Polygon Amoy',
-      '43114': 'Avalanche',
-      '250': 'Fantom',
-      '42161': 'Arbitrum',
-      '10': 'Optimism',
-      '0x13881': 'Polygon Mumbai (Deprecated)',
-      '0x13882': 'Polygon Amoy',
-    };
-
-    return networkMap[chainId] || 'Unknown Network';
+  async reconnect(): Promise<string> {
+    this.disconnect();
+    return this.connect();
   }
 
   /**
-   * Handle and categorize errors
+   * Check if wallet is on the correct network
    */
-  private handleError(error: unknown): WalletError {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    
-    if (message.includes('User rejected') || message.includes('user rejected')) {
-      return {
-        code: 'USER_REJECTED',
-        message,
-        userMessage: 'Connection was rejected. Please try again and approve the connection.',
-      };
+  isOnCorrectNetwork(): boolean {
+    return this.state.chainId === '1' || this.state.chainId === '0x1';
+  }
+
+  /**
+   * Get user-friendly error message
+   */
+  getErrorMessage(): string | null {
+    return this.state.error;
+  }
+
+  /**
+   * Clear error state
+   */
+  clearError(): void {
+    this.updateState({ error: null });
+  }
+
+  /**
+   * Get native ETH balance
+   */
+  async getNativeBalance(address: string): Promise<string> {
+    if (!this.state.provider) {
+      throw new Error('Provider not available');
     }
     
-    if (message.includes('already pending')) {
-      return {
-        code: 'ALREADY_PENDING',
-        message,
-        userMessage: 'A connection request is already pending. Please check your wallet.',
-      };
+    try {
+      const balance = await this.state.provider.getBalance(address);
+      return ethers.formatEther(balance);
+    } catch (error) {
+      console.error('Error fetching native balance:', error);
+      return '0';
     }
-    
-    if (message.includes('not installed') || message.includes('No Ethereum provider')) {
-      return {
-        code: 'NO_PROVIDER',
-        message,
-        userMessage: 'MetaMask is not installed. Please install MetaMask to continue.',
-      };
+  }
+
+  /**
+   * Get ERC20 token balance
+   */
+  async getTokenBalance(tokenAddress: string, userAddress: string): Promise<string> {
+    if (!this.state.provider) {
+      throw new Error('Provider not available');
     }
-    
-    if (message.includes('locked') || message.includes('unlock')) {
-      return {
-        code: 'WALLET_LOCKED',
-        message,
-        userMessage: 'Wallet is locked. Please unlock your wallet and try again.',
-      };
+
+    try {
+      const contract = new ethers.Contract(
+        tokenAddress,
+        ['function balanceOf(address) external view returns (uint256)', 'function decimals() external view returns (uint8)'],
+        this.state.provider
+      );
+
+      const [balance, decimals] = await Promise.all([
+        contract.balanceOf(userAddress),
+        contract.decimals()
+      ]);
+
+      return ethers.formatUnits(balance, decimals);
+    } catch (error) {
+      console.error('Error fetching token balance:', error);
+      return '0';
     }
-    
-    if (message.includes('No accounts found')) {
-      return {
-        code: 'NO_ACCOUNTS',
-        message,
-        userMessage: 'No accounts found. Please create or import an account in your wallet.',
-      };
-    }
-    
-    return {
-      code: 'UNKNOWN_ERROR',
-      message,
-      userMessage: 'Failed to connect wallet. Please try again.',
-    };
   }
 }
 
 // Export singleton instance
-export const walletService = WalletService.getInstance(); 
+export const simplifiedWalletService = SimplifiedWalletService.getInstance();

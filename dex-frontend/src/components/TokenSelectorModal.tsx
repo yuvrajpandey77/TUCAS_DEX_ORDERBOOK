@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,43 +11,25 @@ interface Token {
   address: string;
   logo: string;
   volume?: string;
+  decimals?: number;
 }
 
 const popularTokens: Token[] = [
   {
-    symbol: 'MATIC',
-    name: 'Polygon',
-    address: '0x0000000000000000000000000000000000000000',
+    symbol: 'ETH',
+    name: 'Ethereum',
+    address: '0x0000000000000000000000000000000000000000', // Native ETH on Ethereum Mainnet
     logo: '⬟',
-    volume: '$2.1B'
-  },
-  {
-    symbol: 'USDT',
-    name: 'Tether USD',
-    address: '0xBD21A10F619BE90d6066c941b04e340bbF4C8d0b', // Amoy USDT (placeholder - update with actual Amoy address)
-    logo: '💰',
-    volume: '$1.8B'
+    volume: '$2.1B',
+    decimals: 18
   },
   {
     symbol: 'USDC',
     name: 'USD Coin',
-    address: '0x0FA8781a83E46826621b3BC094Ea2A0212e71B23', // Amoy USDC (placeholder - update with actual Amoy address)
+    address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // Official USDC on Ethereum Mainnet
     logo: '🪙',
-    volume: '$1.2B'
-  },
-  {
-    symbol: 'WMATIC',
-    name: 'Wrapped MATIC',
-    address: '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889', // Amoy WMATIC (placeholder - update with actual Amoy address)
-    logo: '⬟',
-    volume: '$890M'
-  },
-  {
-    symbol: 'UNI',
-    name: 'Uniswap',
-    address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
-    logo: '🦄',
-    volume: '$456M'
+    volume: '$1.2B',
+    decimals: 6
   }
 ];
 
@@ -83,6 +65,9 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
           <DialogTitle className="text-xl font-semibold text-foreground">
             Search tokens and pools
           </DialogTitle>
+          <DialogDescription>
+            Select a token to trade with
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -108,7 +93,7 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
             {filteredTokens.map((token) => (
               <Button
                 key={token.address}
-                variant="token"
+                variant="ghost"
                 onClick={() => handleTokenSelect(token)}
                 className="flex items-center justify-between w-full p-4 h-auto"
               >
@@ -138,7 +123,7 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
             {filteredTokens.map((token) => (
               <Button
                 key={token.address}
-                variant="token"
+                variant="ghost"
                 onClick={() => handleTokenSelect(token)}
                 className="flex items-center justify-between w-full p-4 h-auto"
               >
