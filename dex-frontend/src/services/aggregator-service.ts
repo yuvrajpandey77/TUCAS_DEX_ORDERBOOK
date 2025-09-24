@@ -29,7 +29,7 @@ export class AggregatorService {
   private priceCache: Map<string, { price: number; timestamp: number }> = new Map()
   private readonly CACHE_DURATION = 30000 // 30 seconds
   
-  constructor(network: 'mainnet' | 'mumbai' = 'mumbai') {
+  constructor(network: 'mainnet' | 'mumbai' = 'mainnet') {
     this.baseUrl = network === 'mainnet' ? 'https://api.0x.org' : 'https://mumbai.api.0x.org'
     this.isTestnet = network === 'mumbai'
   }
@@ -167,18 +167,23 @@ export class AggregatorService {
       // Add 20% buffer to gas estimate
       const gasLimit = (gasEstimate * 120n) / 100n;
 
-
-      // Get current gas price
+      // Get current EIP-1559 fee data
       const feeData = await signer.provider?.getFeeData();
-      const gasPrice = feeData?.gasPrice || BigInt('20000000000'); // 20 gwei default
+      const maxFeePerGas = feeData?.maxFeePerGas;
+      const maxPriorityFeePerGas = feeData?.maxPriorityFeePerGas;
+      const useLegacy = !maxFeePerGas || !maxPriorityFeePerGas;
 
       // Show transaction details to user
       const txDetails = {
         to: quote.to,
         value: ethers.formatEther(quote.value || '0'),
         gasLimit: gasLimit.toString(),
-        gasPrice: ethers.formatUnits(gasPrice, 'gwei'),
-        estimatedCost: ethers.formatEther(gasLimit * gasPrice)
+        ...(useLegacy
+          ? { }
+          : {
+              maxFeePerGas: ethers.formatUnits(maxFeePerGas!, 'gwei'),
+              maxPriorityFeePerGas: ethers.formatUnits(maxPriorityFeePerGas!, 'gwei')
+            })
       };
 
 
@@ -188,7 +193,13 @@ export class AggregatorService {
         data: quote.data as `0x${string}`,
         value: BigInt(quote.value || '0'),
         gasLimit: gasLimit,
-        gasPrice: gasPrice
+        ...(useLegacy
+          : { gasPrice: feeData?.gasPrice || BigInt('20000000000') }
+          ,
+          {
+            maxFeePerGas,
+            maxPriorityFeePerGas
+          })
       });
 
       

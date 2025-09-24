@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
-import { YellowOrderForm } from '@/components/trading/yellow-order-form';
-import YellowOrderBook from '@/components/YellowOrderBook';
+import LimitOrderCard from '@/components/LimitOrderCard';
 import CandlestickChart from '@/components/CandlestickChart';
+import { POOL_ADDRESSES } from '@/config/uniswap-v3';
 import { useYellowNetwork } from '@/components/YellowNetworkProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Activity, Zap, BarChart3, Clock, Target, Settings, Calculator } from 'lucide-react';
+import { Activity, BarChart3, Clock, Target, Settings } from 'lucide-react';
 
 const Limit = () => {
   const [selectedPair] = useState('ETH/USDC');
@@ -17,8 +16,72 @@ const Limit = () => {
   const [volume24h, setVolume24h] = useState<string>('0');
   const [showChart, setShowChart] = useState(true);
   const [timeframe, setTimeframe] = useState('1h');
-  const [activeTab, setActiveTab] = useState('basic');
+  // No local tabs; using on-chain LimitOrderCard
   const { isConnected, error } = useYellowNetwork();
+  const marketBase = (import.meta as any).env?.VITE_MARKET_DATA_URL || 'http://localhost:4001';
+  const [ticker, setTicker] = useState<{ price: number; changePercent24h: number; volume24h: number } | null>(null);
+
+  useEffect(() => {
+    // Use WS live ticks for real-time price; fall back to initial REST fetch for volume
+    const pool = POOL_ADDRESSES.ETH_USDC;
+    let url: URL;
+    try { url = new URL(marketBase); } catch { return; }
+    const wsPort = (Number(url.port || '4001') + 1).toString();
+    const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${url.hostname}:${wsPort}`;
+
+    const ws = new WebSocket(wsUrl);
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ type: 'subscribe', pool }));
+    });
+    ws.addEventListener('message', (evt) => {
+      try {
+        const msg = JSON.parse(evt.data as string);
+        if (msg.type === 'tick' && typeof msg.price === 'number') {
+          setTicker((prev) => ({
+            price: msg.price,
+            changePercent24h: prev?.changePercent24h ?? 0,
+            volume24h: prev?.volume24h ?? 0,
+          }));
+        }
+      } catch {}
+    });
+
+    // initial 24h stats via REST
+    (async () => {
+      try {
+        const res = await fetch(`${marketBase}/ticker?pool=${pool}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        setTicker({ price: json.price, changePercent24h: json.changePercent24h, volume24h: json.volume24h });
+      } catch {}
+    })();
+
+    return () => { try { ws.close(); } catch {} };
+  }, [marketBase]);
+
+  const TickerStat = () => (
+    <div className="flex items-center space-x-2">
+      <p className={`text-2xl font-bold ${((ticker?.changePercent24h || 0) >= 0) ? 'text-green-400' : 'text-red-400'}`}>
+        ${ticker ? ticker.price.toFixed(6) : '0.000000'}
+      </p>
+      {ticker && (
+        <span className={`text-sm ${ticker.changePercent24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          {ticker.changePercent24h >= 0 ? '▲' : '▼'}
+        </span>
+      )}
+    </div>
+  );
+
+  const TickerChange = () => (
+    <p className={`text-2xl font-bold ${((ticker?.changePercent24h || 0) >= 0) ? 'text-green-400' : 'text-red-400'}`}>
+      {ticker ? `${ticker.changePercent24h >= 0 ? '+' : ''}${ticker.changePercent24h.toFixed(2)}%` : '+0.00%'}
+    </p>
+  );
+
+  const TickerVolume = () => (
+    <p className="text-2xl font-bold text-foreground">${ticker ? ticker.volume24h.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '0'}</p>
+  );
 
   // Mock data initialization
   useEffect(() => {
@@ -120,18 +183,7 @@ const Limit = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Last Price</p>
-                  <div className="flex items-center space-x-2">
-                    <p className={`text-2xl font-bold ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      ${currentPrice?.toFixed(2) || '0.00'}
-                    </p>
-                    {priceChange !== 0 && (
-                      priceChange >= 0 ? (
-                        <TrendingUp className="h-5 w-5 text-green-400" />
-                      ) : (
-                        <TrendingDown className="h-5 w-5 text-red-400" />
-                      )
-                    )}
-                  </div>
+                  <TickerStat />
                 </div>
               </div>
             </CardContent>
@@ -142,9 +194,7 @@ const Limit = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">24h Change</p>
-                  <p className={`text-2xl font-bold ${priceChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-                  </p>
+                  <TickerChange />
                 </div>
               </div>
             </CardContent>
@@ -155,7 +205,7 @@ const Limit = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">24h Volume</p>
-                  <p className="text-2xl font-bold text-foreground">${volume24h}</p>
+                  <TickerVolume />
                 </div>
               </div>
             </CardContent>
@@ -195,111 +245,24 @@ const Limit = () => {
               </div>
             </div>
             <CandlestickChart 
-              pair={selectedPair} 
+              pair={selectedPair}
               timeframe={timeframe}
               height={400}
+              poolAddress={POOL_ADDRESSES.ETH_USDC}
             />
           </div>
         )}
 
         {/* Main Trading Interface */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Limit Order Strategies */}
+          {/* Left Column - Limit Order UI (on-chain) */}
           <div className="lg:col-span-2">
-            <Card className="bg-background/20 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-primary" />
-                  Limit Order Strategies
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-6">
-                    <TabsTrigger value="basic" className="flex items-center gap-2">
-                      <Target className="h-4 w-4" />
-                      Basic Limit
-                    </TabsTrigger>
-                    <TabsTrigger value="advanced" className="flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      Advanced
-                    </TabsTrigger>
-                    <TabsTrigger value="bracket" className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Bracket Orders
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="basic" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Buy Limit Order */}
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                          <TrendingUp className="h-5 w-5 text-green-400" />
-                          Buy Limit Order
-                        </h3>
-                        <YellowOrderForm 
-                          orderType="limit" 
-                          side="buy" 
-                          tradingPair={selectedPair} 
-                        />
-                      </div>
-
-                      {/* Sell Limit Order */}
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                          <TrendingDown className="h-5 w-5 text-red-400" />
-                          Sell Limit Order
-                        </h3>
-                        <YellowOrderForm 
-                          orderType="limit" 
-                          side="sell" 
-                          tradingPair={selectedPair} 
-                        />
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="advanced" className="space-y-6">
-                    <div className="text-center py-8">
-                      <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-foreground mb-2">Advanced Limit Orders</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Stop-limit orders, trailing stops, and conditional orders coming soon
-                      </p>
-                      <Badge variant="outline">Coming Soon</Badge>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="bracket" className="space-y-6">
-                    <div className="text-center py-8">
-                      <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-foreground mb-2">Bracket Orders</h3>
-                      <p className="text-muted-foreground mb-4">
-                        OCO (One-Cancels-Other) and bracket order strategies coming soon
-                      </p>
-                      <Badge variant="outline">Coming Soon</Badge>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+            <LimitOrderCard />
           </div>
 
           {/* Right Column - Order Book & Market Data */}
           <div className="space-y-6">
-            {/* Order Book */}
-            <Card className="bg-background/20 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  Order Book
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <YellowOrderBook selectedPair={selectedPair} />
-              </CardContent>
-            </Card>
+            {/* Order Book - replace with on-chain orderbook later if available */}
 
             {/* Market Data */}
             <Card className="bg-background/20 backdrop-blur-xl border-white/10">

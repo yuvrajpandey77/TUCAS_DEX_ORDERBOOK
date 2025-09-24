@@ -3,8 +3,8 @@
 
 export const YELLOW_NETWORK_CONFIG = {
   // Network Configuration
-  chainId: 11155111, // Ethereum Sepolia testnet
-  rpcUrl: 'https://rpc.sepolia.org',
+  chainId: 1, // Ethereum Mainnet
+  rpcUrl: 'https://ethereum.publicnode.com',
   
   // Yellow Network Core Contracts (ClearSync Protocol)
   contracts: {
@@ -129,26 +129,25 @@ export const YELLOW_NETWORK_CONFIG = {
 
   // Custodian Configuration for cross-chain support
   custodians: {
-    // Ethereum custodian (testnet) - Primary
+    // Ethereum custodian (mainnet)
     ethereum: {
-      address: '0x1111111111111111111111111111111111111111', // Mock address for development
+      address: '0x1111111111111111111111111111111111111111', // Placeholder until real
       supportedTokens: ['ETH', 'USDC', 'USDT', 'WETH', 'WBTC', 'DAI'],
-      chainId: 11155111, // Sepolia
+      chainId: 1, // Mainnet
       isActive: true,
     },
-    // Arbitrum custodian (testnet)
+    // L2s can be added later when moving beyond mainnet
     arbitrum: {
-      address: '0x3333333333333333333333333333333333333333', // Mock address for development
+      address: '0x3333333333333333333333333333333333333333', // Placeholder
       supportedTokens: ['WETH', 'USDC', 'USDT'],
-      chainId: 421614, // Arbitrum Sepolia
-      isActive: true,
+      chainId: 42161, // Arbitrum One
+      isActive: false,
     },
-    // Optimism custodian (testnet)
     optimism: {
-      address: '0x4444444444444444444444444444444444444444', // Mock address for development
+      address: '0x4444444444444444444444444444444444444444', // Placeholder
       supportedTokens: ['WETH', 'USDC', 'USDT'],
-      chainId: 11155420, // Optimism Sepolia
-      isActive: true,
+      chainId: 10, // Optimism Mainnet
+      isActive: false,
     },
   },
 } as const;
