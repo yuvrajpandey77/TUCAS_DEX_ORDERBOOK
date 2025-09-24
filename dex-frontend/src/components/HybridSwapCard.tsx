@@ -161,14 +161,16 @@ const HybridSwapCard = () => {
 
   // Handle amount input - only allow changes to sell amount
   const handleSellAmountChange = useCallback((value: string) => {
-    setSellAmount(value);
+    if (/^\d*(?:\.\d*)?$/.test(value)) {
+      setSellAmount(value);
+    }
     // Reset buy amount - it will be updated by the quote
     setBuyAmount('0');
     setIsManualSwap(false); // Let quotes handle the calculation
   }, []);
 
   // Buy amount is read-only - no manual changes allowed
-  const handleBuyAmountChange = useCallback((value: string) => {
+  const handleBuyAmountChange = useCallback(() => {
     // Do nothing - this field is read-only
     console.log('Buy amount is read-only and calculated automatically');
   }, []);
@@ -340,10 +342,18 @@ const HybridSwapCard = () => {
                 <ChevronDown className="w-4 h-4" />
               </Button>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
                 placeholder="0.0"
                 value={sellAmount}
                 onChange={(e) => handleSellAmountChange(e.target.value)}
+                onWheel={(e) => e.currentTarget.blur()}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                  }
+                }}
                 className="text-right text-lg"
                 disabled={isLoading}
               />
@@ -410,10 +420,12 @@ const HybridSwapCard = () => {
                 <ChevronDown className="w-4 h-4" />
               </Button>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
                 placeholder="0.0"
                 value={buyAmount}
-                onChange={(e) => handleBuyAmountChange(e.target.value)}
+                onChange={() => handleBuyAmountChange()}
                 className="text-right text-lg bg-gray-50 cursor-not-allowed"
                 disabled={true} // Always disabled - read-only
                 readOnly={true}

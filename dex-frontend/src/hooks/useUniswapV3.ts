@@ -81,6 +81,14 @@ export const useSwapQuote = (params: SwapParams | null) => {
     queryKey: ['swapQuote', params],
     queryFn: async () => {
       if (!params) return null;
+      // Enforce Ethereum Mainnet for user wallet before showing actionable quotes
+      try {
+        const chainHex = await window.ethereum?.request?.({ method: 'eth_chainId' });
+        const chainId = typeof chainHex === 'string' ? parseInt(chainHex, 16) : undefined;
+        if (chainId !== undefined && chainId !== 1) {
+          throw new Error('Please switch your wallet to Ethereum Mainnet (chainId 1).');
+        }
+      } catch {}
       console.log('Fetching quote for params:', params);
       return await uniswapV3Service.getSwapQuote(params);
     },
@@ -96,6 +104,12 @@ export const useSwap = () => {
 
   return useMutation({
     mutationFn: async (params: SwapParams) => {
+      // Enforce Ethereum Mainnet before executing swap
+      const chainHex = await window.ethereum?.request?.({ method: 'eth_chainId' });
+      const chainId = typeof chainHex === 'string' ? parseInt(chainHex, 16) : undefined;
+      if (chainId !== 1) {
+        throw new Error('Wrong network. Please switch your wallet to Ethereum Mainnet (chainId 1).');
+      }
       return await uniswapV3Service.executeSwap(params);
     },
     onSuccess: () => {

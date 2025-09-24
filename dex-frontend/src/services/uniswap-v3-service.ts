@@ -63,6 +63,179 @@ export class UniswapV3Service {
   }
 
   /**
+   * Discover the best available pool (by liquidity) across common fee tiers
+   * Returns the selected fee and pool address
+   */
+  private async discoverBestPool(
+    tokenA: Token,
+    tokenB: Token
+  ): Promise<{ fee: FeeAmount; address: string } | null> {
+    const feeTiers: FeeAmount[] = [100, 500, 3000, 10000] as FeeAmount[];
+
+    let best: { fee: FeeAmount; address: string; liquidity: bigint } | null = null;
+
+    for (const fee of feeTiers) {
+      try {
+        const exists = await this.poolExists(tokenA, tokenB, fee);
+        if (!exists) continue;
+
+        const poolAddress = await this.getPoolAddress(tokenA, tokenB, fee);
+        const poolContract = new ethers.Contract(
+          poolAddress,
+          ['function liquidity() external view returns (uint128)'],
+          this.provider
+        );
+        const liquidity: bigint = await poolContract.liquidity();
+        if (!best || liquidity > best.liquidity) {
+          best = { fee, address: poolAddress, liquidity };
+        }
+      } catch {
+        // ignore this tier if it errors
+        continue;
+      }
+    }
+
+    if (!best) return null;
+    return { fee: best.fee, address: best.address };
+  }
+
+  /**
+   * Try building a best single-hop or two-hop route via WETH or USDC
+   * Returns the path of token addresses and corresponding fee tiers
+   */
+  private async discoverBestRoute(
+    tokenIn: Token,
+    tokenOut: Token
+  ): Promise<{ path: string[]; fees: FeeAmount[] } | null> {
+    // 1) Try direct pool
+    const direct = await this.discoverBestPool(tokenIn, tokenOut);
+    if (direct) {
+      return { path: [tokenIn.address, tokenOut.address], fees: [direct.fee] };
+    }
+
+    // 2) Try via WETH
+    const viaWethA = await this.discoverBestPool(tokenIn, TOKENS.WETH);
+    const viaWethB = await this.discoverBestPool(TOKENS.WETH, tokenOut);
+    if (viaWethA && viaWethB) {
+      return {
+        path: [tokenIn.address, TOKENS.WETH.address, tokenOut.address],
+        fees: [viaWethA.fee, viaWethB.fee]
+      };
+    }
+
+    // 3) Try via USDC
+    const viaUsdcA = await this.discoverBestPool(tokenIn, TOKENS.USDC);
+    const viaUsdcB = await this.discoverBestPool(TOKENS.USDC, tokenOut);
+    if (viaUsdcA && viaUsdcB) {
+      return {
+        path: [tokenIn.address, TOKENS.USDC.address, tokenOut.address],
+        fees: [viaUsdcA.fee, viaUsdcB.fee]
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Compute price impact by comparing execution price to mid-price from pools
+   * Returns percentage as string (e.g., "0.23")
+   */
+  private async computePriceImpact(
+    tokenIn: Token,
+    tokenOut: Token,
+    route: { path: string[]; fees: FeeAmount[] },
+    amountInWei: bigint,
+    amountOutWei: bigint
+  ): Promise<string> {
+    try {
+      const SCALE = 10n ** 18n;
+      const Q192 = 2n ** 192n;
+
+      // Helper to get Token object by address (limited to known TOKENS)
+      const getToken = (address: string): Token | null => {
+        const entry = Object.values(TOKENS).find(t => t.address.toLowerCase() === address.toLowerCase());
+        return entry || null;
+      };
+
+      // Build hop mid-price (scaled by SCALE)
+      const getHopScaled = async (aAddr: string, bAddr: string, fee: number): Promise<bigint> => {
+        const a = getToken(aAddr);
+        const b = getToken(bAddr);
+        if (!a || !b) return SCALE; // neutral if unknown
+        const poolAddress = await this.getPoolAddress(a, b, fee as FeeAmount);
+        const poolContract = new ethers.Contract(
+          poolAddress,
+          ['function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)'],
+          this.provider
+        );
+        const slot0 = await poolContract.slot0();
+        const sqrtX96: bigint = BigInt(slot0.sqrtPriceX96.toString());
+        const priceX192 = sqrtX96 * sqrtX96; // token1 per token0 in base units
+
+        // Determine token0/token1 sorting
+        const [token0, _token1] = a.sortsBefore(b) ? [a, b] : [b, a];
+        const aIsToken0 = a.address.toLowerCase() === token0.address.toLowerCase();
+
+        // hop price in base units: token1 per token0
+        const hopBaseScaled = (priceX192 * SCALE) / Q192;
+
+        // If a is token1, we need inverse
+        if (aIsToken0) {
+          return hopBaseScaled; // a->b aligns with token0->token1
+        } else {
+          // inverse: SCALE^2 / hopBaseScaled, but to keep precision: (SCALE * Q192) / priceX192
+          return (SCALE * Q192) / priceX192;
+        }
+      };
+
+      // Compute route mid in base units (scaled by SCALE)
+      let midScaled = SCALE;
+      for (let i = 0; i < route.path.length - 1; i++) {
+        const hop = await getHopScaled(route.path[i], route.path[i + 1], route.fees[i]);
+        midScaled = (midScaled * hop) / SCALE;
+      }
+
+      // Adjust for decimals difference to human units
+      const dIn = tokenIn.decimals;
+      const dOut = tokenOut.decimals;
+      const pow10 = (p: number): bigint => {
+        let r = 1n;
+        for (let i = 0; i < p; i++) r *= 10n;
+        return r;
+      };
+      const decimalAdjust = dIn >= dOut ? pow10(dIn - dOut) : 1n / 1n; // handle separately below to avoid fractions
+
+      let midScaledHuman: bigint;
+      if (dIn >= dOut) {
+        midScaledHuman = midScaled * decimalAdjust;
+      } else {
+        const invAdjust = pow10(dOut - dIn);
+        midScaledHuman = midScaled / invAdjust;
+      }
+
+      // Execution price in human units: (amountOut/amountIn) * 10^(dIn-dOut)
+      let execScaledHuman: bigint;
+      if (dIn >= dOut) {
+        execScaledHuman = (amountOutWei * SCALE * decimalAdjust) / amountInWei;
+      } else {
+        const invAdjust = pow10(dOut - dIn);
+        execScaledHuman = (amountOutWei * SCALE) / (amountInWei / invAdjust);
+      }
+
+      if (midScaledHuman === 0n) return '0';
+      // priceImpact = |1 - exec/mid| * 100
+      const ratioScaled = (execScaledHuman * SCALE) / midScaledHuman; // scaled by SCALE
+      const diff = ratioScaled > SCALE ? ratioScaled - SCALE : SCALE - ratioScaled;
+      const impactScaled = (diff * 10000n) / SCALE; // basis points
+      const integer = impactScaled / 100n;
+      const decimals = impactScaled % 100n;
+      return `${integer}.${decimals.toString().padStart(2, '0')}`;
+    } catch {
+      return '0.0';
+    }
+  }
+
+  /**
    * Try alternative RPC endpoints if current one fails
    */
   private async tryAlternativeRpc(): Promise<ethers.Provider> {
@@ -91,6 +264,16 @@ export class UniswapV3Service {
     try {
       return await fn();
     } catch (error) {
+      // Do not fallback for local validation errors
+      const isLocalValidationError = error instanceof Error && (
+        error.message.includes('No signer available') ||
+        error.message.includes('Token not found') ||
+        error.message.includes('Invalid') ||
+        error.message.includes('Pool not found')
+      );
+      if (isLocalValidationError) {
+        throw error;
+      }
       console.warn('RPC call failed, trying alternative endpoint...', error);
       
       try {
@@ -273,6 +456,12 @@ export class UniswapV3Service {
           throw new Error('Pool not found. Please check your network connection.');
         }
         
+        // Discover best fee tier for WETH/USDC
+        const bestPool = await this.discoverBestPool(TOKENS.WETH, TOKENS.USDC);
+        if (!bestPool) {
+          throw new Error('No WETH/USDC pool found');
+        }
+
         // Get quote using WETH instead of ETH
         const amountInWei = ethers.parseUnits(amountIn, 18);
         
@@ -295,7 +484,7 @@ export class UniswapV3Service {
           amountOut = await quoterContract.quoteExactInputSingle.staticCall(
             UNISWAP_V3_CONFIG.WETH_ADDRESS, // Use WETH address
             UNISWAP_V3_CONFIG.USDC_ADDRESS, // USDC address
-            UNISWAP_V3_CONFIG.DEFAULT_FEE_TIER, // 1% fee
+            bestPool.fee, // discovered fee
             amountInWei,
             0 // sqrtPriceLimitX96 = 0 means no price limit
           );
@@ -324,7 +513,7 @@ export class UniswapV3Service {
         const minimumReceivedFormatted = ethers.formatUnits(minimumReceived, 6);
 
         // Estimate gas
-        const gasEstimate = await this.estimateSwapGas(tokenIn, tokenOut, amountIn, UNISWAP_V3_CONFIG.DEFAULT_FEE_TIER);
+        const gasEstimate = await this.estimateSwapGas(tokenIn, tokenOut, amountIn, bestPool.fee);
 
         return {
           inputAmount: amountIn,
@@ -333,22 +522,15 @@ export class UniswapV3Service {
           minimumReceived: minimumReceivedFormatted,
           gasEstimate: gasEstimate.toString(),
           route: ['ETH', 'USDC'], // Show ETH in route for user clarity
-          fee: UNISWAP_V3_CONFIG.DEFAULT_FEE_TIER,
+          fee: bestPool.fee,
         };
       }
       
-      // For other token pairs, use the original logic
-      const poolExists = await this.poolExists(tokenInObj, tokenOutObj, UNISWAP_V3_CONFIG.DEFAULT_FEE_TIER);
-      if (!poolExists) {
-        console.error(`❌ Pool ${tokenInObj.symbol}/${tokenOutObj.symbol} does not exist on Ethereum mainnet`);
-        throw new Error('Pool not found. Please check your network connection.');
-      }
-
-      // Get pool info to determine fee
-      const poolInfo = await this.getPoolInfo('ETH_USDC');
-      if (!poolInfo) {
-        console.error('❌ Pool info not available');
-        throw new Error('Unable to get pool information. Please check your connection.');
+      // For other token pairs, try direct or 2-hop route
+      const route = await this.discoverBestRoute(tokenInObj, tokenOutObj);
+      if (!route) {
+        console.error(`❌ No route found for ${tokenInObj.symbol}/${tokenOutObj.symbol}`);
+        throw new Error('No route found. Please try different tokens or amount.');
       }
 
       // Convert amount to proper decimals
@@ -363,13 +545,38 @@ export class UniswapV3Service {
 
       let amountOut;
       try {
-        amountOut = await quoterContract.quoteExactInputSingle.staticCall(
-          tokenIn,
-          tokenOut,
-          poolInfo.fee,
-          amountInWei,
-          0 // sqrtPriceLimitX96 = 0 means no price limit
-        );
+        if (route.path.length === 2) {
+          // Single hop
+          amountOut = await quoterContract.quoteExactInputSingle.staticCall(
+            route.path[0],
+            route.path[1],
+            route.fees[0],
+            amountInWei,
+            0
+          );
+        } else {
+          // Two hops: encode path for quoteExactInput
+          // Path encoding: tokenIn (20) + fee (3) + tokenMid (20) + fee (3) + tokenOut (20)
+          const encodePath = (addresses: string[], fees: number[]) => {
+            const FEE_SIZE = 3; // bytes
+            let hex = '0x';
+            for (let i = 0; i < addresses.length; i++) {
+              hex += addresses[i].slice(2);
+              if (i < fees.length) {
+                hex += fees[i].toString(16).padStart(FEE_SIZE * 2, '0');
+              }
+            }
+            return hex;
+          };
+
+          const exactPath = encodePath(route.path, route.fees);
+          const quoterV2 = new ethers.Contract(
+            UNISWAP_V3_CONFIG.QUOTER_ADDRESS,
+            ['function quoteExactInput(bytes path, uint256 amountIn) external returns (uint256 amountOut)'],
+            this.provider
+          );
+          amountOut = await quoterV2.quoteExactInput.staticCall(exactPath, amountInWei);
+        }
         
         // Check if result is empty (0x)
         if (!amountOut || amountOut === '0x' || amountOut === '0') {
@@ -386,21 +593,31 @@ export class UniswapV3Service {
       const amountOutWei = BigInt(amountOut);
       const minimumReceived = amountOutWei - (amountOutWei * BigInt(slippageTolerancePercent.numerator.toString())) / BigInt(slippageTolerancePercent.denominator.toString());
 
+      // Compute price impact from route mid-price
+      const priceImpact = await this.computePriceImpact(tokenInObj, tokenOutObj, route, amountInWei, amountOutWei);
+
       // Format amounts
       const amountOutFormatted = ethers.formatUnits(amountOut, tokenOutObj.decimals);
       const minimumReceivedFormatted = ethers.formatUnits(minimumReceived, tokenOutObj.decimals);
 
       // Estimate gas
-      const gasEstimate = await this.estimateSwapGas(tokenIn, tokenOut, amountIn, poolInfo.fee);
+      const gasEstimate = await this.estimateSwapGas(tokenIn, tokenOut, amountIn, route.fees[0]);
 
       return {
         inputAmount: amountIn,
         outputAmount: amountOutFormatted,
-        priceImpact: '0.1', // Simplified - would need more complex calculation
+        priceImpact,
         minimumReceived: minimumReceivedFormatted,
         gasEstimate: gasEstimate.toString(),
-        route: [tokenInObj.symbol || 'UNKNOWN', tokenOutObj.symbol || 'UNKNOWN'],
-        fee: poolInfo.fee,
+        route: route.path.map((addr) => {
+          if (addr.toLowerCase() === UNISWAP_V3_CONFIG.WETH_ADDRESS.toLowerCase()) return 'WETH';
+          if (addr.toLowerCase() === UNISWAP_V3_CONFIG.USDC_ADDRESS.toLowerCase()) return 'USDC';
+          if (addr.toLowerCase() === '0x0000000000000000000000000000000000000000') return 'ETH';
+          if (addr.toLowerCase() === tokenIn.toLowerCase()) return tokenInObj.symbol || 'UNKNOWN';
+          if (addr.toLowerCase() === tokenOut.toLowerCase()) return tokenOutObj.symbol || 'UNKNOWN';
+          return 'TOKEN';
+        }),
+        fee: route.fees[0],
       };
     }).catch(error => {
       console.error('Error getting swap quote:', error);
@@ -412,21 +629,7 @@ export class UniswapV3Service {
    * Get fallback quote when pool doesn't exist or quoter fails
    * This should only be used as a last resort and clearly marked as fallback
    */
-  private async getFallbackQuote(
-    tokenIn: any, 
-    tokenOut: any, 
-    amountIn: string, 
-    slippageTolerance: number
-  ): Promise<SwapQuote> {
-    console.error('❌ CRITICAL: Pool not found or quoter failed - cannot provide real quotes!');
-    console.error('This should not happen on Ethereum mainnet. Please check:');
-    console.error('1. You are connected to Ethereum mainnet (chain ID: 1)');
-    console.error('2. The WETH/USDC pool has liquidity');
-    console.error('3. Your RPC endpoint is working');
-    
-    // Return null instead of mock data - force the UI to show error
-    throw new Error('Unable to get real market quote. Please check your connection and try again.');
-  }
+  // Removed fallback quote method to avoid unused warnings; mainnet should always use real quotes.
 
   /**
    * Estimate gas for a swap
@@ -520,7 +723,7 @@ export class UniswapV3Service {
         throw new Error('No signer available');
       }
 
-      const { tokenIn, tokenOut, amountIn, recipient, deadline } = params;
+      const { tokenIn, tokenOut, amountIn, deadline } = params;
       
       // Safety: validate critical addresses and avoid burn/zero
       const ZERO = '0x0000000000000000000000000000000000000000';
@@ -545,9 +748,14 @@ export class UniswapV3Service {
         throw new Error('Token not found');
       }
 
-      // Get pool info
-      const poolInfo = await this.getPoolInfo('ETH_USDC');
-      if (!poolInfo) {
+      // Discover best pool/fee for the actual pair
+      // Handle ETH input as WETH for pool discovery
+      const useWethForEthIn = tokenIn.toLowerCase() === '0x0000000000000000000000000000000000000000' && 
+                              tokenOut.toLowerCase() === UNISWAP_V3_CONFIG.USDC_ADDRESS.toLowerCase();
+      const discoverTokenIn = useWethForEthIn ? TOKENS.WETH : tokenInObj;
+      const discoverTokenOut = useWethForEthIn ? TOKENS.USDC : tokenOutObj;
+      const bestPool = await this.discoverBestPool(discoverTokenIn, discoverTokenOut);
+      if (!bestPool) {
         throw new Error('Pool not found');
       }
 
@@ -555,12 +763,17 @@ export class UniswapV3Service {
       const amountInWei = ethers.parseUnits(amountIn, tokenInObj.decimals);
       const minimumAmountOut = ethers.parseUnits(quote.minimumReceived, tokenOutObj.decimals);
 
-      // Check if token is approved (ETH doesn't need approval)
+      // Check if token is approved for the exact amount (ETH doesn't need approval)
       const signerAddress = await this.signer.getAddress();
       const isEth = tokenIn.toLowerCase() === '0x0000000000000000000000000000000000000000';
       
       if (!isEth) {
-        const isApproved = await this.isTokenApproved(tokenIn, UNISWAP_V3_CONFIG.SWAP_ROUTER_ADDRESS, signerAddress);
+        const isApproved = await this.isTokenApproved(
+          tokenIn,
+          UNISWAP_V3_CONFIG.SWAP_ROUTER_ADDRESS,
+          signerAddress,
+          amountInWei
+        );
         if (!isApproved) {
           throw new Error('Token not approved. Please approve the token first.');
         }
@@ -584,7 +797,7 @@ export class UniswapV3Service {
         const swapParams = {
           tokenIn: UNISWAP_V3_CONFIG.WETH_ADDRESS, // Use WETH for the swap
           tokenOut: UNISWAP_V3_CONFIG.USDC_ADDRESS, // USDC
-          fee: poolInfo.fee,
+          fee: bestPool.fee,
           recipient: safeRecipient,
           deadline: deadline || Math.floor(Date.now() / 1000) + 1800, // 30 minutes
           amountIn: amountInWei,
@@ -619,7 +832,7 @@ export class UniswapV3Service {
         const swapParams = {
           tokenIn,
           tokenOut,
-          fee: poolInfo.fee,
+          fee: bestPool.fee,
           recipient: safeRecipient,
           deadline: deadline || Math.floor(Date.now() / 1000) + 1800, // 30 minutes
           amountIn: amountInWei,
@@ -647,7 +860,12 @@ export class UniswapV3Service {
   /**
    * Check if token is approved for spending
    */
-  async isTokenApproved(tokenAddress: string, spender: string, owner: string): Promise<boolean> {
+  async isTokenApproved(
+    tokenAddress: string,
+    spender: string,
+    owner: string,
+    requiredAmountWei: bigint = 0n
+  ): Promise<boolean> {
     try {
       // Native ETH doesn't need approval
       if (tokenAddress.toLowerCase() === '0x0000000000000000000000000000000000000000') {
@@ -660,8 +878,8 @@ export class UniswapV3Service {
         this.provider
       );
 
-      const allowance = await contract.allowance(owner, spender);
-      return allowance > 0;
+      const allowance: bigint = await contract.allowance(owner, spender);
+      return allowance >= requiredAmountWei;
     } catch (error) {
       console.error('Error checking token approval:', error);
       return false;

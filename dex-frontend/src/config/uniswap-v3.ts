@@ -87,7 +87,8 @@ export const TRADING_PAIRS = {
 
 // Uniswap V3 Pool Addresses (calculated from factory)
 export const POOL_ADDRESSES = {
-  ETH_USDC: '0x0000000000000000000000000000000000000000', // Will be calculated dynamically
+  // WETH/USDC 0.3% mainnet pool
+  ETH_USDC: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
 } as const;
 
 // Gas settings for Mainnet

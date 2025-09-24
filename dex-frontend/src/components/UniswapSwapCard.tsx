@@ -121,12 +121,17 @@ const UniswapSwapCard = () => {
 
   // Handle amount input
   const handleSellAmountChange = useCallback((value: string) => {
-    setSellAmount(value);
+    // Allow only digits and a single decimal point
+    if (/^\d*(?:\.\d*)?$/.test(value)) {
+      setSellAmount(value);
+    }
     setIsManualSwap(true);
   }, []);
 
   const handleBuyAmountChange = useCallback((value: string) => {
-    setBuyAmount(value);
+    if (/^\d*(?:\.\d*)?$/.test(value)) {
+      setBuyAmount(value);
+    }
     setIsManualSwap(true);
   }, []);
 
@@ -224,7 +229,7 @@ const UniswapSwapCard = () => {
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                 <Globe className="w-3 h-3 mr-1" />
-                Sepolia
+                Mainnet
               </Badge>
               <Button
                 variant="ghost"
@@ -286,10 +291,19 @@ const UniswapSwapCard = () => {
                 <ChevronDown className="w-4 h-4" />
               </Button>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
                 placeholder="0.0"
                 value={sellAmount}
                 onChange={(e) => handleSellAmountChange(e.target.value)}
+                onWheel={(e) => e.currentTarget.blur()}
+                onKeyDown={(e) => {
+                  // Prevent arrows from changing value implicitly
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                  }
+                }}
                 className="text-right text-lg"
                 disabled={isLoading}
               />
@@ -337,10 +351,18 @@ const UniswapSwapCard = () => {
                 <ChevronDown className="w-4 h-4" />
               </Button>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
                 placeholder="0.0"
                 value={buyAmount}
                 onChange={(e) => handleBuyAmountChange(e.target.value)}
+                onWheel={(e) => e.currentTarget.blur()}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                  }
+                }}
                 className="text-right text-lg"
                 disabled={isLoading}
               />
@@ -432,9 +454,9 @@ const UniswapSwapCard = () => {
           {/* Network Info */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>Network: Ethereum Sepolia</span>
+              <span>Network: Ethereum Mainnet</span>
               <a
-                href={`https://sepolia.etherscan.io/address/${address}`}
+                href={`https://etherscan.io/address/${address}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 hover:text-blue-600"

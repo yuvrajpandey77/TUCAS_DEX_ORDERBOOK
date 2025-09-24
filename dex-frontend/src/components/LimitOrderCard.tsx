@@ -272,10 +272,14 @@ const LimitOrderCard = () => {
               <div className="relative">
                 <div className="flex items-center space-x-3 p-4 rounded-xl bg-accent/30 border border-border/20">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
                     placeholder="0.00"
                     value={fromAmount}
-                    onChange={(e) => setFromAmount(e.target.value)}
+                    onChange={(e) => /^\d*(?:\.\d*)?$/.test(e.target.value) && setFromAmount(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                     className="border-0 bg-transparent text-2xl font-medium placeholder:text-muted-foreground/50 focus-visible:ring-0 flex-1"
                   />
                   <Button variant="ghost" className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-background/50">
@@ -293,10 +297,14 @@ const LimitOrderCard = () => {
               <div className="relative">
                 <div className="flex items-center space-x-3 p-4 rounded-xl bg-accent/30 border border-border/20">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
                     placeholder="0.00"
                     value={limitPrice}
-                    onChange={(e) => setLimitPrice(e.target.value)}
+                    onChange={(e) => /^\d*(?:\.\d*)?$/.test(e.target.value) && setLimitPrice(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                     className="border-0 bg-transparent text-2xl font-medium placeholder:text-muted-foreground/50 focus-visible:ring-0 flex-1"
                   />
                   <span className="text-sm text-muted-foreground whitespace-nowrap">USDC per MONAD</span>
@@ -310,10 +318,14 @@ const LimitOrderCard = () => {
               <div className="relative">
                 <div className="flex items-center space-x-3 p-4 rounded-xl bg-accent/30 border border-border/20">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
                     placeholder="0.00"
                     value={toAmount}
-                    onChange={(e) => setToAmount(e.target.value)}
+                    onChange={(e) => /^\d*(?:\.\d*)?$/.test(e.target.value) && setToAmount(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                     className="border-0 bg-transparent text-2xl font-medium placeholder:text-muted-foreground/50 focus-visible:ring-0 flex-1"
                   />
                   <Button variant="ghost" className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-background/50">
@@ -448,10 +460,14 @@ const LimitOrderCard = () => {
               <div className="relative">
                 <div className="flex items-center space-x-3 p-4 rounded-xl bg-accent/30 border border-border/20">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
                     placeholder="0.00"
                     value={fromAmount}
-                    onChange={(e) => setFromAmount(e.target.value)}
+                    onChange={(e) => /^\d*(?:\.\d*)?$/.test(e.target.value) && setFromAmount(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                     className="border-0 bg-transparent text-2xl font-medium placeholder:text-muted-foreground/50 focus-visible:ring-0 flex-1"
                   />
                   <Button variant="ghost" className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-background/50">
@@ -469,10 +485,14 @@ const LimitOrderCard = () => {
               <div className="relative">
                 <div className="flex items-center space-x-3 p-4 rounded-xl bg-accent/30 border border-border/20">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
                     placeholder="0.00"
                     value={limitPrice}
-                    onChange={(e) => setLimitPrice(e.target.value)}
+                    onChange={(e) => /^\d*(?:\.\d*)?$/.test(e.target.value) && setLimitPrice(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                     className="border-0 bg-transparent text-2xl font-medium placeholder:text-muted-foreground/50 focus-visible:ring-0 flex-1"
                   />
                   <span className="text-sm text-muted-foreground whitespace-nowrap">USDC per MONAD</span>
@@ -486,10 +506,14 @@ const LimitOrderCard = () => {
               <div className="relative">
                 <div className="flex items-center space-x-3 p-4 rounded-xl bg-accent/30 border border-border/20">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
                     placeholder="0.00"
                     value={toAmount}
-                    onChange={(e) => setToAmount(e.target.value)}
+                    onChange={(e) => /^\d*(?:\.\d*)?$/.test(e.target.value) && setToAmount(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                     className="border-0 bg-transparent text-2xl font-medium placeholder:text-muted-foreground/50 focus-visible:ring-0 flex-1"
                   />
                   <Button variant="ghost" className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-background/50">

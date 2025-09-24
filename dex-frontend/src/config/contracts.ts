@@ -32,25 +32,25 @@ export const ORDERBOOK_DEX_ABI = [
 
 export const CONTRACTS = {
   ORDERBOOK_DEX: {
-    address: '0x0000000000000000000000000000000000000000',
+    address: (import.meta as any).env?.VITE_ORDERBOOK_DEX_ADDRESS || '0x0000000000000000000000000000000000000000',
     abi: ORDERBOOK_DEX_ABI
   }
 } as const;
 
 export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000';
 
-export const RPC_URL = 'https://rpc.sepolia.org';
-export const CHAIN_ID = 11155111;
+export const RPC_URL = (import.meta as any).env?.VITE_RPC_URL || 'https://ethereum.publicnode.com';
+export const CHAIN_ID = 1;
 
 // Network configuration
 export const NETWORK_CONFIG = {
   chainId: CHAIN_ID,
   rpcUrl: RPC_URL,
-  name: 'Ethereum Sepolia',
+  name: 'Ethereum Mainnet',
   nativeCurrency: {
     name: 'Ethereum',
     symbol: 'ETH',
     decimals: 18,
   },
-  blockExplorerUrls: ['https://sepolia.etherscan.io'],
+  blockExplorerUrls: ['https://etherscan.io'],
 } as const; 

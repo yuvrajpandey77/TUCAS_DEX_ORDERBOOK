@@ -27,59 +27,109 @@ interface CandlestickChartProps {
   pair: string;
   timeframe?: string;
   height?: number;
+  poolAddress?: string; // Uniswap V3 pool id for live data
 }
 
-const CandlestickChart = ({ pair, timeframe = '1h', height = 400 }: CandlestickChartProps) => {
+const CandlestickChart = ({ pair, timeframe = '1h', height = 400, poolAddress }: CandlestickChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [candleData, setCandleData] = useState<CandleData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Generate mock candlestick data
+  // Load live candles from backend
   useEffect(() => {
-    const generateMockData = () => {
-      const data: CandleData[] = [];
-      const basePrice = 2000;
-      let currentPrice = basePrice;
-      const now = Date.now();
-      
-      // Generate 100 candles (100 hours for 1h timeframe)
-      for (let i = 100; i >= 0; i--) {
-        const timestamp = now - (i * 60 * 60 * 1000); // 1 hour intervals
-        
-        // Generate realistic OHLC data
-        const volatility = 0.02; // 2% volatility
-        const change = (Math.random() - 0.5) * volatility;
-        const open = currentPrice;
-        const close = currentPrice * (1 + change);
-        const high = Math.max(open, close) * (1 + Math.random() * 0.01);
-        const low = Math.min(open, close) * (1 - Math.random() * 0.01);
-        const volume = Math.random() * 1000000;
-        
-        data.push({
-          timestamp,
-          open,
-          high,
-          low,
-          close,
-          volume
-        });
-        
-        currentPrice = close;
+    let isCancelled = false;
+    const marketBase = (import.meta as any).env?.VITE_MARKET_DATA_URL || 'http://localhost:4001';
+    const interval = timeframe.toLowerCase() === '1d' ? '1d' : '1h';
+    const pool = poolAddress?.toLowerCase();
+    if (!pool) return;
+
+    const fetchCandles = async () => {
+      try {
+        setIsLoading(true);
+        const resp = await fetch(`${marketBase}/candles?pool=${pool}&interval=${interval}&limit=300`);
+        if (!resp.ok) throw new Error('Failed to fetch candles');
+        const json = await resp.json();
+        if (!isCancelled) {
+          setCandleData(json.candles || []);
+          setIsLoading(false);
+        }
+      } catch (e) {
+        if (!isCancelled) setIsLoading(false);
       }
-      
-      setCandleData(data);
-      setIsLoading(false);
     };
 
-    generateMockData();
-    
-    // Update data every 30 seconds
-    const interval = setInterval(generateMockData, 30000);
-    return () => clearInterval(interval);
-  }, [pair, timeframe]);
+    fetchCandles();
+    const id = setInterval(fetchCandles, 30000);
+    return () => {
+      isCancelled = true;
+      clearInterval(id);
+    };
+  }, [pair, timeframe, poolAddress]);
+
+  // WebSocket live ticks → bin into candles
+  useEffect(() => {
+    if (!poolAddress) return;
+    const base = (import.meta as any).env?.VITE_MARKET_DATA_URL || 'http://localhost:4001';
+    let url: URL;
+    try {
+      url = new URL(base);
+    } catch {
+      return;
+    }
+    const wsPort = (Number(url.port || '4001') + 1).toString();
+    const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${url.hostname}:${wsPort}`;
+
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ type: 'subscribe', pool: poolAddress }));
+    });
+
+    ws.addEventListener('message', (evt) => {
+      try {
+        const msg = JSON.parse(evt.data as string);
+        if (msg.type !== 'tick' || typeof msg.price !== 'number' || typeof msg.ts !== 'number') return;
+        setCandleData((prev) => {
+          if (prev.length === 0) return prev;
+          const bucketMs = timeframe.toLowerCase() === '1d' ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+          const ts = Math.floor(msg.ts / bucketMs) * bucketMs;
+          const last = prev[prev.length - 1];
+          if (last.timestamp === ts) {
+            // update current candle
+            const updated: CandleData = {
+              ...last,
+              high: Math.max(last.high, msg.price),
+              low: Math.min(last.low, msg.price),
+              close: msg.price,
+            };
+            return [...prev.slice(0, -1), updated];
+          } else if (ts > last.timestamp) {
+            // push new candle seeded from previous close
+            const newCandle: CandleData = {
+              timestamp: ts,
+              open: last.close,
+              high: msg.price,
+              low: msg.price,
+              close: msg.price,
+              volume: last.volume, // volume live not computed here; subgraph REST fills it periodically
+            };
+            return [...prev, newCandle];
+          }
+          return prev;
+        });
+      } catch {}
+    });
+
+    return () => {
+      try { ws.close(); } catch {}
+      wsRef.current = null;
+    };
+  }, [poolAddress, timeframe]);
 
   // Draw candlestick chart
   useEffect(() => {
